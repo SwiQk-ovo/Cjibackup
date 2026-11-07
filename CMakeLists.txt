@@ -14,6 +14,9 @@ configure_file(installer/setup.rc.in ${CMAKE_CURRENT_BINARY_DIR}/setup.rc @ONLY)
 configure_file(installer/uninstall.rc.in ${CMAKE_CURRENT_BINARY_DIR}/uninstall.rc @ONLY)
 configure_file(installer/bootstrap.rc.in ${CMAKE_CURRENT_BINARY_DIR}/bootstrap.rc @ONLY)
 
+# 便携版（阉割版）：关掉启动动画、页面过渡、音效和引导，只保留备份相关功能
+option(CJI_LITE "Build the lite portable edition" OFF)
+
 option(CJI_BUILD_TESTS "构建命令行测试与截图工具" OFF)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
@@ -121,6 +124,10 @@ qt_add_executable(Cjibackup WIN32
 )
 
 cji_configure_gui_target(Cjibackup)
+if(CJI_LITE)
+    target_compile_definitions(Cjibackup PRIVATE CJI_LITE=1)
+    message(STATUS "CJI_LITE=ON：构建便携版（无启动动画 / 无过渡动画 / 无引导）")
+endif()
 
 set_target_properties(Cjibackup PROPERTIES
     OUTPUT_NAME "KOPAL"

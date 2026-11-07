@@ -13,6 +13,12 @@ void fadeIn(QWidget *widget, int durationMs, int delayMs)
 {
     if (!widget)
         return;
+#ifdef CJI_LITE
+    Q_UNUSED(durationMs);
+    Q_UNUSED(delayMs);
+    widget->show();
+    return;   // 便携版不做淡入
+#endif
 
     auto *effect = qobject_cast<QGraphicsOpacityEffect *>(widget->graphicsEffect());
     if (!effect) {
@@ -40,6 +46,12 @@ void fadeIn(QWidget *widget, int durationMs, int delayMs)
 
 void staggerCards(QWidget *page, int durationMs, int stepMs)
 {
+#ifdef CJI_LITE
+    Q_UNUSED(page);
+    Q_UNUSED(durationMs);
+    Q_UNUSED(stepMs);
+    return;
+#endif
     if (!page)
         return;
 
@@ -63,6 +75,12 @@ void staggerCards(QWidget *page, int durationMs, int stepMs)
 
 void pageIn(QWidget *page, int durationMs)
 {
+#ifdef CJI_LITE
+    Q_UNUSED(durationMs);
+    if (page)
+        page->show();
+    return;
+#endif
     if (!page)
         return;
 

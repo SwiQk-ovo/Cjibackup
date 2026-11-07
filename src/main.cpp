@@ -71,7 +71,11 @@ int main(int argc, char *argv[])
     });
 
     SettingsManager *sm = SettingsManager::instance();
+#ifdef CJI_LITE
+    const bool enableSplash = false;   // 便携版：不播启动动画，直接进主界面
+#else
     const bool enableSplash = sm->splashEnabled() && !sm->fastStart();
+#endif
 
     if (enableSplash) {
         auto *splash = new SplashWindow();

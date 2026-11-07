@@ -397,7 +397,11 @@ void MainWindow::prepareShow()
     showFromTray();
 
     // 第一次打开：过一会儿弹使用引导（跳过 / 看完都会记下来，不再打扰）
+#ifdef CJI_LITE
+    if (false) {
+#else
     if (!sm->guideShown()) {
+#endif
         QTimer::singleShot(700, this, [this]() {
             if (isVisible())
                 startGuide();

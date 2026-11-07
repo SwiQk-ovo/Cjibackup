@@ -233,6 +233,9 @@ void SettingsPage::setupUI()
     });
     splashLayout->addWidget(makeCheckRow(
         m_fastStartCheck, "勾上之后直接进主界面，不播动画也不放音效。"));
+#ifdef CJI_LITE
+    splashGroup->hide();   // 便携版没有启动动画，这组设置用不上
+#endif
 
     m_splashPreset = new QComboBox(splashGroup);
     m_splashPreset->setMinimumWidth(220);
