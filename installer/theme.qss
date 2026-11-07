@@ -1,0 +1,156 @@
+/* 拷备 安装程序 - 暗黑透蓝 */
+* {
+    font-family: "Microsoft YaHei UI", "微软雅黑", sans-serif;
+    font-size: 13px;
+    color: #FFFFFF;
+}
+
+QWidget {
+    background-color: #161A23;
+}
+
+QLabel {
+    background: transparent;
+}
+
+QFrame#installerHeader QLabel,
+QFrame#installerFooter QLabel {
+    background: transparent;
+}
+
+QFrame#installerHeader {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                                stop:0 #1D2C4A, stop:0.55 #151D2C, stop:1 #10141D);
+    border-bottom: 1px solid #2A2F3A;
+}
+
+QFrame#installerFooter {
+    background-color: #141821;
+    border-top: 1px solid #2A2F3A;
+}
+
+QLabel#installerTitle {
+    font-size: 20px;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
+QLabel#installerSubtitle {
+    font-size: 12px;
+    color: #9AA6B8;
+}
+
+QLabel#installerStep {
+    color: #6E9BE8;
+    font-size: 12px;
+}
+
+QLabel#installerHeadline {
+    font-size: 17px;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
+QLabel#installerBody {
+    color: #C9D2E0;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+QLabel#installerHint {
+    color: #7E8A9C;
+    font-size: 12px;
+}
+
+QLineEdit {
+    background-color: #10141D;
+    border: 1px solid #2A2F3A;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #FFFFFF;
+    selection-background-color: #3B82F6;
+}
+
+QLineEdit:focus {
+    border: 1px solid #3B82F6;
+}
+
+QPushButton {
+    background-color: #2A2F3A;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 22px;
+    color: #FFFFFF;
+    min-width: 76px;
+}
+
+QPushButton:hover {
+    background-color: #353B48;
+}
+
+QPushButton:pressed {
+    background-color: #232936;
+}
+
+QPushButton#installerPrimary {
+    background-color: #3B82F6;
+    font-weight: bold;
+    padding: 9px 26px;
+}
+
+QPushButton#installerPrimary:hover {
+    background-color: #2563EB;
+}
+
+QPushButton#installerPrimary:disabled {
+    background-color: #22303F;
+    color: #5C6673;
+}
+
+QCheckBox {
+    spacing: 8px;
+    color: #C9D2E0;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid #2A2F3A;
+    background-color: #10141D;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #3B82F6;
+    border-color: #3B82F6;
+    image: url(:/img/check.png);
+}
+
+QProgressBar {
+    background-color: #10141D;
+    border: none;
+    border-radius: 8px;
+    text-align: center;
+    height: 22px;
+    color: #E3E7EE;
+}
+
+QProgressBar::chunk {
+    background-color: #3B82F6;
+    border-radius: 8px;
+}
+
+QMessageBox, QDialog {
+    background-color: #1C212C;
+}
+
+QMessageBox QLabel, QDialog QLabel, QInputDialog QLabel {
+    color: #E3E7EE;
+}
+
+QToolTip {
+    background-color: #0B0F16;
+    color: #FFFFFF;
+    border: 1px solid #2A2F3A;
+    padding: 6px;
+}

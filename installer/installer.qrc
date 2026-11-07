@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>theme.qss</file>
+        <file alias="img/check.png">../resources/check.png</file>
+    </qresource>
+</RCC>
