@@ -1,6 +1,7 @@
 #include "installerwindow.h"
 
 #include "installdata.h"
+#include "core/appicon.h"
 #include "widgets/darkdialog.h"
 #include "widgets/filedialogs.h"
 
@@ -61,29 +62,8 @@ void installLog(const QString &message)
 
 QPixmap loadLogo(int size)
 {
-    QPixmap pixmap(size, size);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-
-    const QRectF body(2, 2, size - 4, size - 4);
-    QLinearGradient gradient(body.topLeft(), body.bottomRight());
-    gradient.setColorAt(0.0, QColor(96, 165, 250));
-    gradient.setColorAt(0.55, QColor(59, 130, 246));
-    gradient.setColorAt(1.0, QColor(29, 78, 216));
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(gradient);
-    painter.drawRoundedRect(body, size * 0.26, size * 0.26);
-
-    QFont font = painter.font();
-    font.setBold(true);
-    font.setPixelSize(int(size * 0.56));
-    font.setFamily(QStringLiteral("Microsoft YaHei UI"));
-    painter.setFont(font);
-    painter.setPen(Qt::white);
-    painter.drawText(body, Qt::AlignCenter, QStringLiteral("C"));
-    painter.end();
-    return pixmap;
+    // 直接用主程序那套图标，别在这里再画一个字母（改图标时容易漏）
+    return AppIcon::logoPixmap(size);
 }
 
 } // namespace

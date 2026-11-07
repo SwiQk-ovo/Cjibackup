@@ -48,6 +48,8 @@ set(APP_SOURCES
     src/widgets/changelogdialog.cpp
     src/widgets/guideoverlay.cpp
     src/widgets/updatedialog.cpp
+    src/core/appicon.cpp
+    src/core/appicon.h
     src/widgets/appicons.cpp
     src/widgets/squircle.cpp
     src/widgets/toast.cpp
@@ -130,6 +132,8 @@ qt_add_executable(CjiInstaller WIN32
     installer/installerwindow.cpp
     installer/installerwindow.h
     src/widgets/darkdialog.cpp
+    src/core/appicon.cpp
+    src/core/appicon.h
     src/widgets/appicons.cpp
     src/widgets/squircle.cpp
     src/widgets/toast.cpp
@@ -161,6 +165,8 @@ set_target_properties(CjiInstaller PROPERTIES OUTPUT_NAME "CjibackupSetup")
 qt_add_executable(CjiUninstaller WIN32
     installer/uninstall_main.cpp
     src/widgets/darkdialog.cpp
+    src/core/appicon.cpp
+    src/core/appicon.h
     src/widgets/appicons.cpp
     src/widgets/squircle.cpp
     src/widgets/toast.cpp
