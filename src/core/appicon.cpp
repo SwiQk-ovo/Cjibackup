@@ -26,11 +26,11 @@ QPixmap logoPixmap(int size)
     const QRectF body(inset, inset, s - inset * 2, s - inset * 2);
     const qreal radius = body.width() * 0.235;
 
-    // 底板：琥珀色渐变（Kopal = 柯巴脂，把照片封存起来）
+    // 底板：最初的蓝色渐变
     QLinearGradient gradient(body.topLeft(), body.bottomRight());
-    gradient.setColorAt(0.0, QColor(0xFF, 0xC9, 0x7A));
-    gradient.setColorAt(0.45, QColor(0xF5, 0x8A, 0x1A));
-    gradient.setColorAt(1.0, QColor(0xC2, 0x41, 0x0C));
+    gradient.setColorAt(0.0, QColor(0x60, 0xA5, 0xFA));
+    gradient.setColorAt(0.5, QColor(0x3B, 0x82, 0xF6));
+    gradient.setColorAt(1.0, QColor(0x1D, 0x4E, 0xD8));
 
     painter.setPen(Qt::NoPen);
     painter.setBrush(gradient);
@@ -45,44 +45,70 @@ QPixmap logoPixmap(int size)
     painter.setBrush(gloss);
     painter.drawRoundedRect(body, radius, radius);
 
-    // 主图形：一台极简相机（机身 + 顶部取景凸起 + 镜头）
-    const qreal bodyW = s * 0.54;
-    const qreal bodyH = s * 0.38;
-    const QRectF camera(body.center().x() - bodyW * 0.5,
-                        body.center().y() - bodyH * 0.42,
-                        bodyW, bodyH);
-    const qreal camRadius = bodyH * 0.26;
+    // 主图形：标准 SD 卡正面（圆角矩形 + 右上切角 + 写保护缺口 + 标签区 + 触点）
+    const qreal cardW = s * 0.42;
+    const qreal cardH = s * 0.54;
+    const QRectF card(body.center().x() - cardW * 0.5,
+                      body.center().y() - cardH * 0.5,
+                      cardW, cardH);
+    const qreal r = cardW * 0.13;
+    const qreal chamfer = cardW * 0.30;   // 右上角的斜切
 
-    QPainterPath cameraShape;
-    cameraShape.addRoundedRect(camera, camRadius, camRadius);
-
-    // 顶部取景器凸起
-    const qreal bumpW = bodyW * 0.30;
-    const qreal bumpH = bodyH * 0.22;
-    const QRectF bump(camera.center().x() - bumpW * 0.5,
-                      camera.top() - bumpH + camRadius * 0.35, bumpW, bumpH * 1.4);
-    QPainterPath bumpShape;
-    bumpShape.addRoundedRect(bump, bumpH * 0.45, bumpH * 0.45);
-    cameraShape = cameraShape.united(bumpShape);
-
-    // 镜头：挖掉一个圆，再放一个小白点
-    const QPointF lensCenter(camera.center().x(), camera.center().y() + bodyH * 0.04);
-    const qreal lensR = bodyH * 0.34;
-    QPainterPath lensHole;
-    lensHole.addEllipse(lensCenter, lensR, lensR);
-    cameraShape = cameraShape.subtracted(lensHole);
+    QPainterPath cardShape;
+    cardShape.moveTo(card.left() + r, card.top());
+    cardShape.lineTo(card.right() - chamfer, card.top());
+    cardShape.lineTo(card.right(), card.top() + chamfer);
+    cardShape.lineTo(card.right(), card.bottom() - r);
+    cardShape.quadTo(card.right(), card.bottom(), card.right() - r, card.bottom());
+    cardShape.lineTo(card.left() + r, card.bottom());
+    cardShape.quadTo(card.left(), card.bottom(), card.left(), card.bottom() - r);
+    cardShape.lineTo(card.left(), card.top() + r);
+    cardShape.quadTo(card.left(), card.top(), card.left() + r, card.top());
+    cardShape.closeSubpath();
 
     painter.setBrush(QColor(255, 255, 255));
     painter.setPen(Qt::NoPen);
-    painter.drawPath(cameraShape);
+    painter.drawPath(cardShape);
 
-    painter.setBrush(QColor(255, 255, 255));
-    painter.drawEllipse(lensCenter, lensR * 0.42, lensR * 0.42);
+    // 左侧写保护凹槽（从卡片边缘挖进去）
+    {
+        const qreal notchW = cardW * 0.13;
+        const qreal notchH = cardH * 0.11;
+        QPainterPath notch;
+        notch.addRoundedRect(QRectF(card.left() - notchW * 0.55,
+                                    card.top() + cardH * 0.30,
+                                    notchW, notchH),
+                             notchH * 0.22, notchH * 0.22);
+        painter.setBrush(QColor(0x3B, 0x82, 0xF6));
+        painter.drawPath(notch);
+    }
 
-    // 右上角的闪光小圆点
-    painter.drawEllipse(QPointF(camera.right() - bodyW * 0.12,
-                                camera.top() + bodyH * 0.20),
-                        bodyH * 0.055, bodyH * 0.055);
+    // 标签区（中间那块贴纸）
+    const QRectF label(card.left() + cardW * 0.16,
+                       card.top() + cardH * 0.16,
+                       cardW * 0.68, cardH * 0.40);
+    painter.setBrush(QColor(0x3B, 0x82, 0xF6));
+    painter.drawRoundedRect(label, cardW * 0.07, cardW * 0.07);
+
+    // 标签上的一条印刷线（白色，很淡）
+    painter.setBrush(QColor(255, 255, 255, 170));
+    const qreal lineX = label.left() + label.width() * 0.12;
+    const qreal lineW = label.width() * 0.52;
+    painter.drawRoundedRect(QRectF(lineX, label.center().y() - cardH * 0.022,
+                                   lineW, cardH * 0.044),
+                            cardH * 0.022, cardH * 0.022);
+
+    // 底部触点：一排小竖条
+    painter.setBrush(QColor(0x3B, 0x82, 0xF6));
+    const int contacts = 6;
+    const qreal gap = cardW * 0.055;
+    const qreal barW = (cardW * 0.68 - gap * (contacts - 1)) / contacts;
+    const qreal barTop = card.bottom() - cardH * 0.26;
+    const qreal barH = cardH * 0.13;
+    for (int i = 0; i < contacts; ++i) {
+        const qreal x = card.left() + cardW * 0.16 + i * (barW + gap);
+        painter.drawRoundedRect(QRectF(x, barTop, barW, barH), barW * 0.3, barW * 0.3);
+    }
     // 外圈细高光，边缘更利落
     painter.setBrush(Qt::NoBrush);
     painter.setPen(QPen(QColor(255, 255, 255, 55), qMax<qreal>(1.0, s * 0.010)));

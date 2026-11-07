@@ -20,6 +20,17 @@ QVector<Release> buildReleases()
 {
     QVector<Release> list;
 
+    // ---------------- 1.1.3 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("1.1.3");
+        release.date = QStringLiteral("2026-11-07");
+        release.items = {
+            {Kind::Improved, QStringLiteral("图标换成标准 SD 卡正面：白色卡片剪影 + 右上切角 + 写保护凹槽 + 底部触点，背景回到最初的蓝色渐变")},
+        };
+        list.append(release);
+    }
+
     // ---------------- 1.1.2 ----------------
     {
         Release release;

@@ -1144,7 +1144,7 @@ QGroupBox[squircle="true"] {
 }
 /* 关于页的英文名 */
 QLabel#aboutEnglish {
-    color: #F5A524;
+    color: #60A5FA;
     font-size: 12px;
     font-weight: bold;
     letter-spacing: 6px;

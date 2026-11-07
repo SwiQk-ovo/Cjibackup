@@ -8,7 +8,7 @@ namespace InstallData {
 const QString AppName = QStringLiteral("拷备");
 const QString AppExeName = QStringLiteral("拷备.exe");
 const QString UninstallerName = QStringLiteral("CjibackupUninstall.exe");
-const QString Version = QStringLiteral("1.1.2");
+const QString Version = QStringLiteral("1.1.3");
 const QString VersionLabel = QStringLiteral("正式版 v1.1.1");
 
 QString defaultInstallDir();
