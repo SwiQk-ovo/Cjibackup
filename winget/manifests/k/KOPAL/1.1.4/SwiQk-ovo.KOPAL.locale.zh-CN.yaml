@@ -1,0 +1,22 @@
+﻿# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+PackageIdentifier: SwiQk-ovo.KOPAL
+PackageVersion: 1.1.4
+PackageLocale: zh-CN
+Publisher: SwiQk-ovo
+PublisherUrl: https://github.com/SwiQk-ovo
+PublisherSupportUrl: https://github.com/SwiQk-ovo/Cjibackup/issues
+PackageName: KOPAL
+PackageUrl: https://github.com/SwiQk-ovo/Cjibackup
+License: MIT
+LicenseUrl: https://github.com/SwiQk-ovo/Cjibackup/blob/main/LICENSE
+Copyright: Copyright (c) 2026 SwiQk-ovo
+ShortDescription: 相机存储卡备份工具，把卡里的照片和视频按规则归档到电脑
+Description: KOPAL 是一款给摄影师的相机存储卡备份工具：支持分类流程图（年/月/日/相机型号/事件/序号）、EXIF 型号识别、文件重命名、备份校验和历史记录。
+Moniker: kopal
+Tags:
+  - backup
+  - camera
+  - photo
+  - installer
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

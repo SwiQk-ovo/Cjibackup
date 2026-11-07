@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+PackageIdentifier: SwiQk-ovo.KOPAL
+PackageVersion: 1.1.4
+Platform:
+  - Windows.Desktop
+MinimumOSVersion: 10.0.17763.0
+InstallerType: exe
+InstallModes:
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+ReleaseDate: 2026-11-07
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/SwiQk-ovo/Cjibackup/releases/download/v1.1.4/Cjibackup_Setup_1.1.4.exe
+    InstallerSha256: E79598CB49A628244F16B6A7BFBE02C8D0E9A28266CBDBBDA666B9E3EC305782
+    InstallerSwitches:
+      Silent: --silent
+      SilentWithProgress: --silent
+    AppsAndFeaturesEntries:
+      - DisplayName: KOPAL
+        DisplayVersion: 1.1.4
+        Publisher: SwiQk-ovo
+ManifestType: installer
+ManifestVersion: 1.10.0
