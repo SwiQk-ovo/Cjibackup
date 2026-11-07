@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath 的“项目产物配置”（artifact configuration）。
+  在 SignPath 后台：Projects → cjibackup → Artifact configurations → 新建，
+  把这份 XML 粘进去（或上传），slug 用 cjibackup-binaries。
+
+  作用：告诉 SignPath 哪些文件要签、以什么身份签。
+  PowerShell 脚本和 .pack 之类不签（它们不是用户直接运行的 exe）。
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration">
+  <zip-file>
+    <pe-file-set>
+      <!-- 主程序：用户双击运行的那个 -->
+      <for-each-file>
+        <pe-file product-name="拷备" product-version="1.1.1" file-version="1.1.1.0">
+          <file-name-filter pattern="拷备.exe" />
+        </pe-file>
+      </for-each-file>
+
+      <!-- 单文件安装包 -->
+      <for-each-file>
+        <pe-file product-name="拷备" product-version="1.1.1" file-version="1.1.1.0" description="拷备 安装程序">
+          <file-name-filter pattern="Cjibackup_Setup_*.exe" />
+        </pe-file>
+      </for-each-file>
+
+      <!-- 卸载程序 -->
+      <for-each-file>
+        <pe-file product-name="拷备" product-version="1.1.1" file-version="1.1.1.0" description="拷备 卸载程序">
+          <file-name-filter pattern="CjibackupUninstall.exe" />
+        </pe-file>
+      </for-each-file>
+
+      <!-- 安装向导本体（解包后运行的） -->
+      <for-each-file>
+        <pe-file product-name="拷备" product-version="1.1.1" file-version="1.1.1.0" description="拷备 安装向导">
+          <file-name-filter pattern="CjibackupSetup.exe" />
+        </pe-file>
+      </for-each-file>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>

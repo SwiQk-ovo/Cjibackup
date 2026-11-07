@@ -1,0 +1,109 @@
+#include "widgets/squircle.h"
+#include "about_page.h"
+#include "core/appicon.h"
+#include "core/version.h"
+#include "widgets/changelogdialog.h"
+#include "widgets/typewritertooltip.h"
+
+#include <QDesktopServices>
+#include <QDir>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QUrl>
+#include <QVBoxLayout>
+
+AboutPage::AboutPage(QWidget *parent)
+    : QWidget(parent)
+{
+    auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(30, 30, 30, 30);
+    layout->setSpacing(12);
+    layout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+
+    auto *logo = new QLabel(this);
+    logo->setPixmap(AppIcon::logoPixmap(96));
+    logo->setAlignment(Qt::AlignCenter);
+    layout->addWidget(logo);
+
+    auto *name = new QLabel("拷备", this);
+    name->setObjectName("aboutLogo");
+    name->setAlignment(Qt::AlignCenter);
+    layout->addWidget(name);
+
+    auto *version = new QLabel(Cji::versionLabel(), this);
+    version->setAlignment(Qt::AlignCenter);
+    version->setObjectName("versionLabel");
+    layout->addWidget(version);
+
+    {
+        auto *changelogRow = new QHBoxLayout();
+        changelogRow->setAlignment(Qt::AlignCenter);
+        changelogRow->setSpacing(8);
+
+        auto *changelogBtn = new QPushButton("更新日志", this);
+        changelogBtn->setObjectName("ghostBtn");
+        changelogBtn->setCursor(Qt::PointingHandCursor);
+        changelogBtn->setToolTip("看看这个版本改了什么，也能翻历史版本的更新内容");
+        connect(changelogBtn, &QPushButton::clicked, this, [this]() {
+            ChangelogDialog::showChangelog(this);
+        });
+        changelogRow->addWidget(changelogBtn);
+
+        m_guideBtn = new QPushButton("使用引导", this);
+        m_guideBtn->setObjectName("ghostBtn");
+        m_guideBtn->setCursor(Qt::PointingHandCursor);
+        m_guideBtn->setToolTip("再把每个功能的位置和用法过一遍");
+        connect(m_guideBtn, &QPushButton::clicked, this, [this]() {
+            emit guideRequested();
+        });
+        changelogRow->addWidget(m_guideBtn);
+
+        layout->addLayout(changelogRow);
+    }
+
+    auto *tagline = new QLabel("给摄影师的相机存储卡备份工具", this);
+    tagline->setObjectName("hintLabel");
+    tagline->setAlignment(Qt::AlignCenter);
+    layout->addWidget(tagline);
+
+    layout->addSpacing(10);
+
+    auto *author = new QLabel("作者：适诠SwiQk_", this);
+    author->setAlignment(Qt::AlignCenter);
+    layout->addWidget(author);
+
+    auto *links = new QHBoxLayout();
+    links->setAlignment(Qt::AlignCenter);
+
+    auto *bili = new QLabel(
+        "<a href='https://space.bilibili.com/3493116898183194' style='color:#3B82F6;'>B站主页</a>",
+        this);
+    bili->setOpenExternalLinks(true);
+    links->addWidget(bili);
+
+    auto *dot = new QLabel(" · ", this);
+    dot->setObjectName("hintLabel");
+    links->addWidget(dot);
+
+    auto *github = new QLabel(
+        "<a href='https://github.com/SwiQk-ovo/Cjibackup' style='color:#3B82F6;'>GitHub 仓库</a>",
+        this);
+    github->setOpenExternalLinks(true);
+    links->addWidget(github);
+
+    layout->addLayout(links);
+
+    auto *dataDir = new QLabel(
+        QString("数据目录：%1").arg(QDir::homePath() + "/.cjibackup"), this);
+    dataDir->setObjectName("hintLabel");
+    dataDir->setAlignment(Qt::AlignCenter);
+    layout->addWidget(dataDir);
+
+    layout->addStretch();
+
+    auto *copyright = new QLabel("© 2026 适诠SwiQk_ · 备份前请确认存储卡已插入并可以被系统读取", this);
+    copyright->setObjectName("hintLabel");
+    copyright->setAlignment(Qt::AlignCenter);
+    layout->addWidget(copyright);
+}
