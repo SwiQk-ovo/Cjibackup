@@ -20,6 +20,18 @@ QVector<Release> buildReleases()
 {
     QVector<Release> list;
 
+    // ---------------- 1.1.2 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("1.1.2");
+        release.date = QStringLiteral("2026-11-07");
+        release.items = {
+            {Kind::Improved, QStringLiteral("全新图标：琥珀色渐变 + 白色相机剪影，16 / 32 / 48 / 64 / 256 各档单独渲染")},
+            {Kind::Added, QStringLiteral("英文名 Kopal（柯巴脂，琥珀的原料）：把照片封存起来的意思，读音也贴「拷备」")},
+        };
+        list.append(release);
+    }
+
     // ---------------- 1.1.1 ----------------
     {
         Release release;

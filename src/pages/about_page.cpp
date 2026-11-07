@@ -31,6 +31,11 @@ AboutPage::AboutPage(QWidget *parent)
     name->setAlignment(Qt::AlignCenter);
     layout->addWidget(name);
 
+    auto *english = new QLabel("KOPAL", this);
+    english->setObjectName("aboutEnglish");
+    english->setAlignment(Qt::AlignCenter);
+    layout->addWidget(english);
+
     auto *version = new QLabel(Cji::versionLabel(), this);
     version->setAlignment(Qt::AlignCenter);
     version->setObjectName("versionLabel");
@@ -62,7 +67,7 @@ AboutPage::AboutPage(QWidget *parent)
         layout->addLayout(changelogRow);
     }
 
-    auto *tagline = new QLabel("给摄影师的相机存储卡备份工具", this);
+    auto *tagline = new QLabel("把相机存储卡里的照片，封存成琥珀", this);
     tagline->setObjectName("hintLabel");
     tagline->setAlignment(Qt::AlignCenter);
     layout->addWidget(tagline);
