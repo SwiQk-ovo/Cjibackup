@@ -6,16 +6,24 @@
 
 namespace {
 
-// 默认备份目标：D: 只有真的存在且可写才用，否则落到图片目录下的 Cjibackup
+// 默认备份目标：D: 只有真的存在且可写才用，否则落到图片目录下
+// 老版本的 Cjibackup 目录如果还在，继续用它，免得照片分两处
 QString defaultTargetPath()
 {
     for (const QFileInfo &drive : QDir::drives()) {
         const QString root = drive.absoluteFilePath();
-        if (root.startsWith(QStringLiteral("D:"), Qt::CaseInsensitive) && QFileInfo(root).isWritable())
-            return root + QStringLiteral("Cjibackup");
+        if (!root.startsWith(QStringLiteral("D:"), Qt::CaseInsensitive) || !QFileInfo(root).isWritable())
+            continue;
+        const QString legacy = root + QStringLiteral("Cjibackup");
+        if (QFileInfo::exists(legacy))
+            return legacy;
+        return root + QStringLiteral("KOPAL");
     }
-    return QDir(QStandardPaths::writableLocation(QStandardPaths::PicturesLocation))
-        .filePath(QStringLiteral("Cjibackup"));
+    const QString pictures = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+    const QString legacy = QDir(pictures).filePath(QStringLiteral("Cjibackup"));
+    if (QFileInfo::exists(legacy))
+        return legacy;
+    return QDir(pictures).filePath(QStringLiteral("KOPAL"));
 }
 
 } // namespace

@@ -24,6 +24,7 @@ private:
     QLineEdit *m_input = nullptr;
     QListWidget *m_list = nullptr;
     QLabel *m_empty = nullptr;
+    QLabel *m_meta = nullptr;
     QPushButton *m_delBtn = nullptr;
 };
 

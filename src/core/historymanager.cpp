@@ -1,4 +1,5 @@
 #include "historymanager.h"
+#include "core/appdirs.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QJsonDocument>
@@ -13,7 +14,9 @@ HistoryManager* HistoryManager::instance()
 HistoryManager::HistoryManager(QObject *parent)
     : QObject(parent)
 {
-    QString dataDir = QDir::homePath() + "/.cjibackup";
+    Cji::migrateLegacyDataDir();
+
+    const QString dataDir = Cji::dataDir();
     QDir().mkpath(dataDir);
     m_filePath = dataDir + "/history.json";
     load();

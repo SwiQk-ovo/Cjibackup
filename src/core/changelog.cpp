@@ -27,6 +27,10 @@ QVector<Release> buildReleases()
         release.date = QStringLiteral("2026-11-07");
         release.items = {
             {Kind::Changed, QStringLiteral("软件名统一成英文 KOPAL：窗口标题、侧栏、托盘、安装程序、快捷方式、exe 文件名全部换成 KOPAL，中文名不再出现")},
+            {Kind::Changed, QStringLiteral("默认安装目录改成 KOPAL，用户数据目录从 ~/.cjibackup 搬到 ~/.kopal（启动时自动迁移，设置和历史不丢）")},
+            {Kind::Improved, QStringLiteral("备份历史、事件列表改成两行排版：上行主信息、下行次要信息，行前加线性小图标，一眼能分清条目")},
+            {Kind::Improved, QStringLiteral("页头标题旁显示当前数量（共 N 条 / 共 N 个），列表为空时导出、清空按钮自动置灰")},
+            {Kind::Improved, QStringLiteral("文件选择器：箭头按钮换成「上一级 / 新建文件夹」文字按钮，支持新建文件夹；盘符显示卷标（例如 Windows (C:)）；表头改成深色，不再白底白字")},
             {Kind::Improved, QStringLiteral("安装/卸载时会一并清掉旧的中文名快捷方式，不会在桌面留下打不开的图标")},
         };
         list.append(release);

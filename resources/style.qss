@@ -1150,3 +1150,46 @@ QLabel#aboutEnglish {
     letter-spacing: 6px;
     margin-top: -4px;
 }
+/* 页头右侧的次要信息（借用 Steamcommunity 302 的标题+计数排法） */
+QLabel#pageMeta {
+    color: #6E7888;
+    font-size: 12px;
+    padding-top: 6px;
+}
+
+QLabel#historyRowTitle {
+    color: #E8EDF5;
+    font-size: 13px;
+}
+
+QLabel#historyRowMeta {
+    color: #7C8698;
+    font-size: 12px;
+}
+
+QWidget#historyRow {
+    background: transparent;
+}
+
+QListWidget#historyList::item {
+    border-bottom: 1px solid #222834;
+    padding: 2px 4px;
+}
+
+QListWidget#historyList::item:hover {
+    background-color: #1B2130;
+}
+/* 列表行前的小图标（302 那种） */
+QLabel#listIcon {
+    background-color: #232A38;
+    border-radius: 8px;
+}
+
+QListWidget#eventsList::item {
+    padding: 8px 10px;
+    border-bottom: 1px solid #222834;
+}
+
+QListWidget#eventsList::item:hover {
+    background-color: #1B2130;
+}

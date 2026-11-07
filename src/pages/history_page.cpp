@@ -2,6 +2,7 @@
 #include "core/historymanager.h"
 #include "widgets/darkdialog.h"
 #include "widgets/squircle.h"
+#include "widgets/appicons.h"
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -27,6 +28,12 @@ HistoryPage::HistoryPage(QWidget *parent)
     m_clearBtn = new QPushButton("清空记录", this);
     connect(m_clearBtn, &QPushButton::clicked, this, &HistoryPage::clearHistory);
     topBar->addWidget(title);
+
+    m_meta = new QLabel(this);
+    m_meta->setObjectName("pageMeta");
+    topBar->addSpacing(12);
+    topBar->addWidget(m_meta);
+
     topBar->addStretch();
     topBar->addWidget(m_exportBtn);
     topBar->addWidget(m_clearBtn);
@@ -57,14 +64,59 @@ void HistoryPage::refreshList()
 {
     m_list->clear();
     auto records = HistoryManager::instance()->records();
+
+    // 两行一条：上面时间，下面文件数 / 大小 / 格式化状态，跟 Steamcommunity 302 那种列表节奏一致
     for (const HistoryRecord &r : records) {
-        QString text = QString("%1  |  %2个文件  |  %3 MB  |  %4")
-            .arg(r.startTime.toString("yyyy-MM-dd hh:mm"))
-            .arg(r.fileCount)
-            .arg(r.totalBytes / 1024 / 1024)
-            .arg(r.formatted ? "已格式化" : "未格式化");
-        m_list->addItem(text);
+        auto *item = new QListWidgetItem(m_list);
+
+        const double mb = double(r.totalBytes) / 1024.0 / 1024.0;
+        const QString sizeText = mb >= 1024.0
+                                     ? QString("%1 GB").arg(mb / 1024.0, 0, 'f', 1)
+                                     : QString("%1 MB").arg(mb, 0, 'f', mb >= 100 ? 0 : 1);
+        const QString meta = QString("%1 个文件 · %2 · %3")
+                                 .arg(r.fileCount)
+                                 .arg(sizeText, r.formatted ? "已格式化" : "未格式化");
+
+        auto *row = new QWidget(m_list);
+        row->setObjectName("historyRow");
+        auto *rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(6, 9, 6, 9);
+        rowLayout->setSpacing(12);
+
+        // 左边一个小图标，像 302 列表那样一眼能区分条目类型
+        auto *iconLabel = new QLabel(row);
+        iconLabel->setObjectName("listIcon");
+        iconLabel->setFixedSize(30, 30);
+        iconLabel->setAlignment(Qt::AlignCenter);
+        iconLabel->setPixmap(AppIcons::pixmap(AppIcons::Glyph::Camera, 18));
+        rowLayout->addWidget(iconLabel, 0, Qt::AlignTop);
+
+        auto *textLayout = new QVBoxLayout();
+        textLayout->setContentsMargins(0, 0, 0, 0);
+        textLayout->setSpacing(3);
+
+        auto *timeLabel = new QLabel(r.startTime.toString("yyyy-MM-dd   HH:mm"), row);
+        timeLabel->setObjectName("historyRowTitle");
+        auto *metaLabel = new QLabel(meta, row);
+        metaLabel->setObjectName("historyRowMeta");
+
+        textLayout->addWidget(timeLabel);
+        textLayout->addWidget(metaLabel);
+        rowLayout->addLayout(textLayout, 1);
+
+        item->setSizeHint(row->sizeHint());
+        m_list->setItemWidget(item, row);
     }
+
+    if (m_meta)
+        m_meta->setText(records.isEmpty() ? QStringLiteral("暂无记录")
+                                          : QStringLiteral("共 %1 条 · 最近 %2")
+                                                .arg(records.size())
+                                                .arg(records.first().startTime.toString("MM-dd HH:mm")));
+    if (m_exportBtn)
+        m_exportBtn->setEnabled(!records.isEmpty());
+    if (m_clearBtn)
+        m_clearBtn->setEnabled(!records.isEmpty());
     if (m_empty)
         m_empty->setVisible(records.isEmpty());
 }

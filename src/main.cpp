@@ -1,3 +1,4 @@
+#include "core/appdirs.h"
 #include "core/appicon.h"
 #include "core/localization.h"
 #include "core/settingsmanager.h"
@@ -26,6 +27,7 @@ int main(int argc, char *argv[])
 
     // 让 Qt 自带的对话框（文件选择等）也显示中文
     Localization::installChineseTranslations(app);
+
     app.setApplicationVersion(Cji::versionNumber());
     app.setWindowIcon(AppIcon::applicationIcon());
 

@@ -12,6 +12,7 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
+#include <QStorageInfo>
 #include <QListWidget>
 #include <QPainter>
 #include <QPushButton>
@@ -95,29 +96,48 @@ void FilePickerDialog::buildUi(const QString &title)
     auto *pathRow = new QHBoxLayout();
     pathRow->setSpacing(8);
 
-    auto *backBtn = new QPushButton(QStringLiteral("←"), this);
-    backBtn->setObjectName(QStringLiteral("pickerIconButton"));
-    backBtn->setFixedSize(30, 30);
-    backBtn->setToolTip(QStringLiteral("返回"));
-    connect(backBtn, &QPushButton::clicked, this, [this]() {
-        QDir dir(m_currentPath);
-        if (dir.cdUp())
-            setCurrentPath(dir.absolutePath());
-    });
-
-    m_upButton = new QPushButton(QStringLiteral("↑"), this);
-    m_upButton->setObjectName(QStringLiteral("pickerIconButton"));
-    m_upButton->setFixedSize(30, 30);
-    m_upButton->setToolTip(QStringLiteral("上一级"));
+    m_upButton = new QPushButton(QStringLiteral("上一级"), this);
+    m_upButton->setObjectName(QStringLiteral("ghostBtn"));
+    m_upButton->setCursor(Qt::PointingHandCursor);
+    m_upButton->setToolTip(QStringLiteral("回到上一级文件夹"));
     connect(m_upButton, &QPushButton::clicked, this, &FilePickerDialog::goUp);
+
+    auto *newFolderBtn = new QPushButton(QStringLiteral("新建文件夹"), this);
+    newFolderBtn->setObjectName(QStringLiteral("ghostBtn"));
+    newFolderBtn->setCursor(Qt::PointingHandCursor);
+    newFolderBtn->setToolTip(QStringLiteral("在当前文件夹里新建一个文件夹"));
+    connect(newFolderBtn, &QPushButton::clicked, this, [this]() {
+        QDir dir(m_currentPath);
+        if (!dir.exists())
+            return;
+
+        // 直接建「新建文件夹」，重名就加序号，建完在列表里选中
+        QString name = QStringLiteral("新建文件夹");
+        int index = 2;
+        while (dir.exists(name))
+            name = QStringLiteral("新建文件夹 (%1)").arg(index++);
+
+        if (!dir.mkdir(name))
+            return;
+
+        const QString created = dir.filePath(name);
+        setCurrentPath(m_currentPath);
+        const QModelIndex index2 = m_model->index(created);
+        if (index2.isValid()) {
+            m_view->setCurrentIndex(index2);
+            m_view->scrollTo(index2);
+            if (m_nameEdit)
+                m_nameEdit->setText(name);
+        }
+    });
 
     m_pathLabel = new QLabel(this);
     m_pathLabel->setObjectName(QStringLiteral("pickerPath"));
     m_pathLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     m_pathLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
-    pathRow->addWidget(backBtn);
     pathRow->addWidget(m_upButton);
+    pathRow->addWidget(newFolderBtn);
     pathRow->addWidget(m_pathLabel, 1);
     root->addLayout(pathRow);
 
@@ -165,6 +185,8 @@ void FilePickerDialog::buildUi(const QString &title)
     m_view->setColumnHidden(2, true);   // 类型（系统给的是英文 File folder，很难看）
     m_view->setColumnHidden(3, false);  // 修改日期
     m_view->header()->setSortIndicatorShown(false);
+    m_view->header()->setHighlightSections(false);
+    m_view->header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_view->header()->resizeSection(3, 150);
 
     connect(m_view, &QTreeView::activated, this, &FilePickerDialog::onRowActivated);
@@ -267,12 +289,24 @@ void FilePickerDialog::refreshPlaces()
     sep->setData(Qt::UserRole, QString());
 
     for (const QFileInfo &drive : QDir::drives()) {
-        QString name = drive.absoluteFilePath();
-        name.remove(QLatin1Char('/'));
-        if (name.endsWith(QLatin1Char('\\')))
-            name.chop(1);
+        QString driveName = drive.absoluteFilePath();
+        driveName.remove(QLatin1Char('/'));
+        if (driveName.endsWith(QLatin1Char('\\')))
+            driveName.chop(1);
+
+        // 带上卷标，用户才分得清哪个盘是哪个
+        QStorageInfo storage(drive.absoluteFilePath());
+        QString label = storage.displayName().trimmed();
+        // 没卷标的盘，displayName 会返回 "D:/" 这种，统一显示成「本地磁盘」
+        const QString trimmedRoot = storage.rootPath().chopped(1);
+        if (label.isEmpty() || label.startsWith(driveName, Qt::CaseInsensitive)
+            || label.compare(trimmedRoot, Qt::CaseInsensitive) == 0)
+            label = QStringLiteral("本地磁盘");
+
+        const QString text = label.isEmpty() ? driveName
+                                             : QStringLiteral("%1 (%2)").arg(label, driveName);
         auto *item = new QListWidgetItem(m_places->style()->standardIcon(QStyle::SP_DriveHDIcon),
-                                         name, m_places);
+                                         text, m_places);
         item->setData(Qt::UserRole, drive.absoluteFilePath());
     }
 }

@@ -244,8 +244,8 @@ QWidget *InstallerWindow::buildPathPage()
     layout->addWidget(headline);
 
     auto *hint = new QLabel(
-        QStringLiteral("默认安装在 D:\\Cjibackup。如果你想装到别的地方，选一个文件夹即可，"
-                       "安装程序会自动在后面补上 Cjibackup 子文件夹。"),
+        QStringLiteral("默认安装在 D:\\KOPAL。如果你想装到别的地方，选一个文件夹即可，"
+                       "安装程序会自动在后面补上 KOPAL 子文件夹。"),
         page);
     hint->setObjectName("installerBody");
     hint->setWordWrap(true);

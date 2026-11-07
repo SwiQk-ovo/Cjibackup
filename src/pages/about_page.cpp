@@ -1,5 +1,6 @@
 #include "widgets/squircle.h"
 #include "about_page.h"
+#include "core/appdirs.h"
 #include "core/appicon.h"
 #include "core/version.h"
 #include "widgets/changelogdialog.h"
@@ -96,7 +97,7 @@ AboutPage::AboutPage(QWidget *parent)
     layout->addLayout(links);
 
     auto *dataDir = new QLabel(
-        QString("数据目录：%1").arg(QDir::homePath() + "/.cjibackup"), this);
+        QString("数据目录：%1").arg(Cji::dataDir()), this);
     dataDir->setObjectName("hintLabel");
     dataDir->setAlignment(Qt::AlignCenter);
     layout->addWidget(dataDir);

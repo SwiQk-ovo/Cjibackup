@@ -22,6 +22,7 @@ private:
     QPushButton *m_clearBtn = nullptr;
     QPushButton *m_exportBtn = nullptr;
     QLabel *m_empty = nullptr;
+    QLabel *m_meta = nullptr;
 };
 
 #endif // HISTORY_PAGE_H

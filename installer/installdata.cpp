@@ -101,14 +101,23 @@ namespace InstallData {
 
 QString defaultInstallDir()
 {
+    // 覆盖安装：沿用上次装的位置，别把新版本装成第二个副本
+    {
+        QSettings entry(QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Cjibackup"),
+                        QSettings::NativeFormat);
+        const QString existing = entry.value(QStringLiteral("InstallLocation")).toString();
+        if (!existing.isEmpty() && QDir(existing).exists())
+            return QDir::fromNativeSeparators(existing);
+    }
+
     // QDir("D:/").exists() 对不存在的盘也返回 true，必须用 QDir::drives() 过滤
     for (const QFileInfo &drive : QDir::drives()) {
         const QString root = drive.absoluteFilePath();
         if (root.startsWith(QStringLiteral("D:"), Qt::CaseInsensitive) && QFileInfo(root).isWritable())
-            return root + QStringLiteral("Cjibackup");
+            return root + QStringLiteral("KOPAL");
     }
     return QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation))
-        .filePath(QStringLiteral("Cjibackup"));
+        .filePath(QStringLiteral("KOPAL"));
 }
 
 QString normalizeInstallDir(const QString &chosen)
@@ -120,8 +129,8 @@ QString normalizeInstallDir(const QString &chosen)
         return defaultInstallDir();
 
     const QFileInfo info(path);
-    if (info.fileName().compare(QStringLiteral("Cjibackup"), Qt::CaseInsensitive) != 0)
-        path += QStringLiteral("/Cjibackup");
+    if (info.fileName().compare(QStringLiteral("KOPAL"), Qt::CaseInsensitive) != 0)
+        path += QStringLiteral("/KOPAL");
     return path;
 }
 

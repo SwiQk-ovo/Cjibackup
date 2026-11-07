@@ -24,6 +24,7 @@ endif()
 
 set(APP_SOURCES
     src/mainwindow.cpp
+    src/core/appdirs.cpp
     src/core/appicon.cpp
     src/core/settingsmanager.cpp
     src/core/backupengine.cpp
@@ -47,6 +48,7 @@ set(APP_SOURCES
     src/widgets/changelogdialog.cpp
     src/widgets/guideoverlay.cpp
     src/widgets/updatedialog.cpp
+    src/widgets/appicons.cpp
     src/widgets/squircle.cpp
     src/widgets/toast.cpp
     src/widgets/uianim.cpp
@@ -58,6 +60,7 @@ set(APP_SOURCES
 
 set(APP_HEADERS
     src/mainwindow.h
+    src/core/appdirs.h
     src/core/appicon.h
     src/core/settingsmanager.h
     src/core/backupengine.h
@@ -83,6 +86,7 @@ set(APP_HEADERS
     src/widgets/changelogdialog.h
     src/widgets/guideoverlay.h
     src/widgets/updatedialog.h
+    src/widgets/appicons.h
     src/widgets/squircle.h
     src/widgets/toast.h
     src/widgets/uianim.h
@@ -126,12 +130,14 @@ qt_add_executable(CjiInstaller WIN32
     installer/installerwindow.cpp
     installer/installerwindow.h
     src/widgets/darkdialog.cpp
+    src/widgets/appicons.cpp
     src/widgets/squircle.cpp
     src/widgets/toast.cpp
     src/widgets/uianim.cpp
     src/widgets/filedialogs.cpp
     src/widgets/filepickerdialog.cpp
     src/widgets/darkdialog.h
+    src/widgets/appicons.h
     src/widgets/squircle.h
     src/widgets/toast.h
     src/widgets/uianim.h
@@ -155,12 +161,14 @@ set_target_properties(CjiInstaller PROPERTIES OUTPUT_NAME "CjibackupSetup")
 qt_add_executable(CjiUninstaller WIN32
     installer/uninstall_main.cpp
     src/widgets/darkdialog.cpp
+    src/widgets/appicons.cpp
     src/widgets/squircle.cpp
     src/widgets/toast.cpp
     src/widgets/uianim.cpp
     src/widgets/filedialogs.cpp
     src/widgets/filepickerdialog.cpp
     src/widgets/darkdialog.h
+    src/widgets/appicons.h
     src/widgets/squircle.h
     src/widgets/toast.h
     src/widgets/uianim.h
