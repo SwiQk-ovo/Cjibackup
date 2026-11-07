@@ -476,7 +476,7 @@ void UpdateDialog::showDemoReleases()
 {
     UpdateRelease stable;
     stable.version = QStringLiteral("1.0.7");
-    stable.title = QStringLiteral("拷备 v1.0.7");
+    stable.title = QStringLiteral("KOPAL v1.0.7");
     stable.date = QStringLiteral("2026-10-31");
     stable.pageUrl = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
     stable.notes = {
@@ -487,7 +487,7 @@ void UpdateDialog::showDemoReleases()
 
     UpdateRelease pre;
     pre.version = QStringLiteral("1.2.0");
-    pre.title = QStringLiteral("拷备 v1.2.0");
+    pre.title = QStringLiteral("KOPAL v1.2.0");
     pre.date = QStringLiteral("2026-11-08");
     pre.prerelease = true;
     pre.downloadUrl = QStringLiteral("https://example.com/Cjibackup_Setup_1.2.0.exe");

@@ -26,15 +26,11 @@ AboutPage::AboutPage(QWidget *parent)
     logo->setAlignment(Qt::AlignCenter);
     layout->addWidget(logo);
 
-    auto *name = new QLabel("拷备", this);
+    auto *name = new QLabel("KOPAL", this);
     name->setObjectName("aboutLogo");
     name->setAlignment(Qt::AlignCenter);
     layout->addWidget(name);
 
-    auto *english = new QLabel("KOPAL", this);
-    english->setObjectName("aboutEnglish");
-    english->setAlignment(Qt::AlignCenter);
-    layout->addWidget(english);
 
     auto *version = new QLabel(Cji::versionLabel(), this);
     version->setAlignment(Qt::AlignCenter);

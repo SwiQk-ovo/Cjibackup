@@ -17,12 +17,12 @@ BEGIN
         BLOCK "080404b0"
         BEGIN
             VALUE "CompanyName",      "SwiQk-ovo"
-            VALUE "FileDescription",  "拷备 卸载程序"
+            VALUE "FileDescription",  "KOPAL 卸载程序"
             VALUE "FileVersion",      "@PROJECT_VERSION@"
             VALUE "InternalName",     "CjibackupUninstall"
             VALUE "LegalCopyright",   "© 2026 SwiQk-ovo"
             VALUE "OriginalFilename", "CjibackupUninstall.exe"
-            VALUE "ProductName",      "拷备"
+            VALUE "ProductName",      "KOPAL"
             VALUE "ProductVersion",   "@PROJECT_VERSION@"
         END
     END

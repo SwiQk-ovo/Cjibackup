@@ -462,9 +462,9 @@ void SplashWindow::paintText(QPainter &painter, const QRectF &card, qreal progre
 
     // 先画一层柔和投影，再画本体
     painter.setPen(QColor(0, 0, 0, int(110 * alpha)));
-    painter.drawText(titleRect.translated(0, 1.5), Qt::AlignCenter, QStringLiteral("拷备"));
+    painter.drawText(titleRect.translated(0, 1.5), Qt::AlignCenter, QStringLiteral("KOPAL"));
     painter.setPen(QColor(255, 255, 255, int(255 * alpha)));
-    painter.drawText(titleRect, Qt::AlignCenter, QStringLiteral("拷备"));
+    painter.drawText(titleRect, Qt::AlignCenter, QStringLiteral("KOPAL"));
 
     QFont subFont = font();
     subFont.setPixelSize(12);

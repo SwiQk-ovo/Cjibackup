@@ -92,7 +92,7 @@ InstallerWindow::InstallerWindow(bool testMode, QWidget *parent)
     : QWidget(parent)
     , m_testMode(testMode)
 {
-    setWindowTitle(QStringLiteral("拷备 安装程序"));
+    setWindowTitle(QStringLiteral("KOPAL 安装程序"));
     setWindowIcon(QIcon(loadLogo(64)));
     setFixedSize(720, 480);
     applyDarkTitleBar(this);
@@ -134,7 +134,7 @@ void InstallerWindow::buildUi()
 
     auto *titleBox = new QVBoxLayout();
     titleBox->setSpacing(2);
-    auto *title = new QLabel(QStringLiteral("拷备"), header);
+    auto *title = new QLabel(QStringLiteral("KOPAL"), header);
     title->setObjectName("installerTitle");
     auto *subtitle = new QLabel(
         QStringLiteral("相机存储卡备份工具 · %1").arg(InstallData::VersionLabel), header);
@@ -200,7 +200,7 @@ QWidget *InstallerWindow::buildWelcomePage()
     layout->setContentsMargins(48, 32, 48, 24);
     layout->setSpacing(14);
 
-    auto *headline = new QLabel(QStringLiteral("欢迎安装 拷备"), page);
+    auto *headline = new QLabel(QStringLiteral("欢迎安装 KOPAL"), page);
     headline->setObjectName("installerHeadline");
     layout->addWidget(headline);
 
@@ -208,7 +208,7 @@ QWidget *InstallerWindow::buildWelcomePage()
     intro->setObjectName("installerBody");
     intro->setWordWrap(true);
     intro->setText(
-        QStringLiteral("安装程序会把 拷备 %1 安装到你的电脑上，并创建桌面 / 开始菜单快捷方式，"
+        QStringLiteral("安装程序会把 KOPAL %1 安装到你的电脑上，并创建桌面 / 开始菜单快捷方式，"
                        "可以在「设置 - 应用」里随时卸载。")
             .arg(InstallData::VersionLabel));
     layout->addWidget(intro);
@@ -317,7 +317,7 @@ QWidget *InstallerWindow::buildDonePage()
     m_doneLabel->setWordWrap(true);
     layout->addWidget(m_doneLabel);
 
-    m_runCheck = new QCheckBox(QStringLiteral("立即运行 拷备"), page);
+    m_runCheck = new QCheckBox(QStringLiteral("立即运行 KOPAL"), page);
     m_runCheck->setChecked(true);
     layout->addWidget(m_runCheck);
 
@@ -498,7 +498,7 @@ void InstallerWindow::startInstall()
 
     m_installed = true;
     m_doneLabel->setText(
-        QString("拷备 %1 已安装到：\n%2\n\n%3")
+        QString("KOPAL %1 已安装到：\n%2\n\n%3")
             .arg(InstallData::VersionLabel, QDir::toNativeSeparators(m_installDir),
                  m_testMode ? QStringLiteral("（测试模式：没有创建快捷方式和卸载项）")
                             : QStringLiteral("桌面和开始菜单快捷方式已经创建好，可以在「设置 - 应用」中卸载。")));

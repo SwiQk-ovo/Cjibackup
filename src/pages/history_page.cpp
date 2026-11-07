@@ -89,7 +89,7 @@ void HistoryPage::exportCsv()
         dir = QDir::homePath();
 
     const QString path = QDir(dir).filePath(
-        QString("拷备历史_%1.csv")
+        QString("KOPAL历史_%1.csv")
             .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss")));
 
     QFile file(path);

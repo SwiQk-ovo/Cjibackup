@@ -52,7 +52,7 @@ bool createShortcut(const QString &lnkPath, const QString &target, const QString
 }
 #endif
 
-// 改名（C极备份 → 拷备）前留下的旧快捷方式，升级安装时清掉，免得留一个打不开的图标
+// 改名（C极备份 → KOPAL）前留下的旧快捷方式，升级安装时清掉，免得留一个打不开的图标
 static void cjiInstallLog(const QString &message)
 {
     QFile file(QDir::tempPath() + QStringLiteral("/cji_installer.log"));
@@ -69,7 +69,12 @@ void cleanupLegacyShortcuts()
         QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)
             + QStringLiteral("/C极备份.lnk"),
         QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
-            + QStringLiteral("/C极备份.lnk")
+            + QStringLiteral("/C极备份.lnk"),
+        // 上一版的中文名，升级时一起清掉
+        QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)
+            + QStringLiteral("/拷备.lnk"),
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+            + QStringLiteral("/拷备.lnk")
     };
     for (const QString &path : legacy) {
         // 注意：QFileInfo::exists() 在这里对 .lnk 会误报 false（实测），所以直接 remove
@@ -81,13 +86,13 @@ void cleanupLegacyShortcuts()
 QString desktopShortcutPath()
 {
     return QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)
-           + QStringLiteral("/拷备.lnk");
+           + QStringLiteral("/KOPAL.lnk");
 }
 
 QString startMenuShortcutPath()
 {
     return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
-           + QStringLiteral("/拷备.lnk");
+           + QStringLiteral("/KOPAL.lnk");
 }
 
 } // namespace
@@ -133,7 +138,7 @@ bool createShortcuts(const QString &installDir, bool desktopShortcut, QString *e
 
     if (desktopShortcut) {
         if (!createShortcut(desktopShortcutPath(), exePath, installDir,
-                            QStringLiteral("拷备 - 相机存储卡备份"))) {
+                            QStringLiteral("KOPAL - 相机存储卡备份"))) {
             ok = false;
             if (error)
                 *error = QStringLiteral("创建桌面快捷方式失败");
@@ -141,7 +146,7 @@ bool createShortcuts(const QString &installDir, bool desktopShortcut, QString *e
     }
 
     if (!createShortcut(startMenuShortcutPath(), exePath, installDir,
-                        QStringLiteral("拷备 - 相机存储卡备份"))) {
+                        QStringLiteral("KOPAL - 相机存储卡备份"))) {
         ok = false;
         if (error && error->isEmpty())
             *error = QStringLiteral("创建开始菜单快捷方式失败");
@@ -176,7 +181,7 @@ bool writeUninstallEntry(const QString &installDir)
     const QString uninstaller = nativeDir + QStringLiteral("\\") + UninstallerName;
 
     QSettings reg(kUninstallKey, QSettings::NativeFormat);
-    reg.setValue(QStringLiteral("DisplayName"), QStringLiteral("拷备"));
+    reg.setValue(QStringLiteral("DisplayName"), QStringLiteral("KOPAL"));
     reg.setValue(QStringLiteral("DisplayVersion"), Version);
     reg.setValue(QStringLiteral("Publisher"), QStringLiteral("适诠SwiQk_"));
     reg.setValue(QStringLiteral("DisplayIcon"), nativeDir + QStringLiteral("\\") + AppExeName);

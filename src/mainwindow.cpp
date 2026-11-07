@@ -34,7 +34,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle("拷备");
+    setWindowTitle("KOPAL");
     setWindowIcon(AppIcon::applicationIcon());
     resize(1000, 680);
     setMinimumSize(800, 550);
@@ -83,7 +83,7 @@ void MainWindow::setupUI()
 void MainWindow::setupSidebar()
 {
     // Logo
-    m_logoLabel = new QLabel("拷备", m_sidebar);
+    m_logoLabel = new QLabel("KOPAL", m_sidebar);
     m_logoLabel->setObjectName("logoLabel");
     m_logoLabel->setAlignment(Qt::AlignCenter);
     m_logoLabel->setFixedHeight(50);
@@ -181,7 +181,7 @@ void MainWindow::setupTray()
         return;
 
     m_tray = new QSystemTrayIcon(AppIcon::applicationIcon(), this);
-    m_tray->setToolTip("拷备");
+    m_tray->setToolTip("KOPAL");
 
     m_trayMenu = new QMenu(this);
     QAction *openAction = m_trayMenu->addAction("打开主界面");
@@ -350,7 +350,7 @@ void MainWindow::onUpdateFound(const QString &version, const QString &notes,
                      [this]() { openUpdateWindow(true); });
 
     if (m_tray)
-        m_tray->showMessage(QStringLiteral("拷备"),
+        m_tray->showMessage(QStringLiteral("KOPAL"),
                             QStringLiteral("新版本 v%1 已发布，点一下就能升级。").arg(version),
                             QSystemTrayIcon::Information, 7000);
 }
@@ -388,7 +388,7 @@ void MainWindow::prepareShow()
     SettingsManager *sm = SettingsManager::instance();
     if (sm->startMinimized() && m_tray) {
         hide();
-        Toast::showToast(QStringLiteral("拷备"),
+        Toast::showToast(QStringLiteral("KOPAL"),
                          QStringLiteral("已在后台运行，双击托盘图标打开主界面。"),
                          Toast::Info, 5000, QStringLiteral("打开主界面"),
                          [this]() { showFromTray(); });
@@ -418,7 +418,7 @@ void MainWindow::startGuide()
 
     QVector<GuideOverlay::Step> steps;
 
-    steps.append({QStringLiteral("欢迎使用 拷备"),
+    steps.append({QStringLiteral("欢迎使用 KOPAL"),
                   QStringLiteral("插卡、选两个文件夹、点开始，照片就会按你定的规则自动归档到硬盘，\n"
                                  "拷完还会逐个校验。下面用几步把每个功能点一遍，一分钟看完。"),
                   nullptr,

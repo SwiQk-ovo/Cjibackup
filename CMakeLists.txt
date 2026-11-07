@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Cjibackup VERSION 1.1.1 LANGUAGES CXX)
+project(Cjibackup VERSION 1.1.4 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -117,7 +117,7 @@ qt_add_executable(Cjibackup WIN32
 cji_configure_gui_target(Cjibackup)
 
 set_target_properties(Cjibackup PROPERTIES
-    OUTPUT_NAME "拷备"
+    OUTPUT_NAME "KOPAL"
 )
 
 # ---------------- 安装器 / 卸载器 / 打包工具 ----------------

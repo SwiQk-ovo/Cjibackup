@@ -56,7 +56,7 @@ private:
 
 Publisher::Publisher()
 {
-    setWindowTitle(QStringLiteral("拷备 · 发布工具"));
+    setWindowTitle(QStringLiteral("KOPAL · 发布工具"));
     resize(880, 760);
     m_net = new QNetworkAccessManager(this);
 
@@ -80,7 +80,7 @@ Publisher::Publisher()
     form->addRow(QStringLiteral("版本号"), m_version);
 
     m_title = new QLineEdit();
-    m_title->setPlaceholderText(QStringLiteral("留空自动用 拷备v版本号"));
+    m_title->setPlaceholderText(QStringLiteral("留空自动用 KOPALv版本号"));
     form->addRow(QStringLiteral("标题"), m_title);
 
     auto *notesRow = new QHBoxLayout();
@@ -271,7 +271,7 @@ void Publisher::publish()
 
     QString title = m_title->text().trimmed();
     if (title.isEmpty())
-        title = QStringLiteral("拷备v%1").arg(version);
+        title = QStringLiteral("KOPALv%1").arg(version);
     const QString body = m_notes->toPlainText();
     const QString tag = QStringLiteral("v%1").arg(version);
 

@@ -42,15 +42,15 @@ $qtPlugins = Join-Path $QtDir "plugins"
 # 否则双击脚本或在干净环境里跑会「打包载荷失败」
 $env:PATH = "$MingwBin;$qtBin;$env:PATH"
 
-# 找主程序 exe（中文文件名，不在脚本里硬编码）
+# 找主程序 exe（不硬编码文件名，靠排除法挑）
 # 注意：build 目录里还有 CjibackupSetup / CjibackupUninstall / CjibackupBootstrap /
 #       packer / CjiPublisher / 测试 / 截图工具，必须全部排除，只留主程序
 $appExe = Get-ChildItem $BuildDir -Filter "*.exe" -File | Where-Object {
     $_.Name -notmatch 'Setup|Uninstall|Bootstrap|_test|smoke|shot_tool|packer|Publisher'
 } | Select-Object -First 1
 if (-not $appExe) { throw "找不到主程序 exe" }
-if ($appExe.Name -ne "拷备.exe") {
-    throw "挑到的主程序不对：$($appExe.Name)（应该是 拷备.exe）"
+if ($appExe.Name -ne "KOPAL.exe") {
+    throw "挑到的主程序不对：$($appExe.Name)（应该是 KOPAL.exe）"
 }
 
 $setupExe     = Join-Path $BuildDir "CjibackupSetup.exe"

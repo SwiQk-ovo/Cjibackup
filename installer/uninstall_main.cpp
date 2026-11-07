@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
 
     if (!silent) {
         const bool confirmed = DarkDialog::question(
-            nullptr, QStringLiteral("卸载 拷备"),
-            QString("确定要卸载 拷备 吗？\n\n安装位置：%1\n\n"
+            nullptr, QStringLiteral("卸载 KOPAL"),
+            QString("确定要卸载 KOPAL 吗？\n\n安装位置：%1\n\n"
                     "你的备份照片、软件设置和历史记录都不会被删除。")
                 .arg(QDir::toNativeSeparators(installDir)),
             QStringLiteral("卸载"), QStringLiteral("取消"));
@@ -142,8 +142,8 @@ int main(int argc, char *argv[])
     if (!silent) {
         DarkDialog::information(
             nullptr, QStringLiteral("卸载完成"),
-            removed ? QStringLiteral("拷备 已卸载，感谢使用。")
-                    : QStringLiteral("拷备 的快捷方式和注册信息已清除，安装目录请手动删除。"),
+            removed ? QStringLiteral("KOPAL 已卸载，感谢使用。")
+                    : QStringLiteral("KOPAL 的快捷方式和注册信息已清除，安装目录请手动删除。"),
             QStringLiteral("完成"));
     }
     return 0;

@@ -89,7 +89,7 @@ void paint(HWND hwnd)
     HFONT titleFont = makeFont(20, true);
     HGDIOBJ old = SelectObject(dc, titleFont);
     RECT titleRect = {28, 28, client.right - 28, 62};
-    DrawTextW(dc, L"拷备", -1, &titleRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+    DrawTextW(dc, L"KOPAL", -1, &titleRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
     SelectObject(dc, old);
     DeleteObject(titleFont);
 
@@ -304,14 +304,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
     HANDLE self = CreateFileW(exePath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                               OPEN_EXISTING, 0, nullptr);
     if (self == INVALID_HANDLE_VALUE) {
-        MessageBoxW(nullptr, L"无法读取安装包文件。", L"拷备", MB_ICONERROR);
+        MessageBoxW(nullptr, L"无法读取安装包文件。", L"KOPAL", MB_ICONERROR);
         return 1;
     }
 
     LARGE_INTEGER fileSize;
     GetFileSizeEx(self, &fileSize);
     if (fileSize.QuadPart < 32) {
-        MessageBoxW(nullptr, L"安装包不完整，请重新下载。", L"拷备", MB_ICONERROR);
+        MessageBoxW(nullptr, L"安装包不完整，请重新下载。", L"KOPAL", MB_ICONERROR);
         CloseHandle(self);
         return 1;
     }
@@ -326,7 +326,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
     ReadFile(self, magic, 8, &read, nullptr);
 
     if (std::memcmp(magic, "CJIBOOT1", 8) != 0 || payloadSize == 0) {
-        MessageBoxW(nullptr, L"安装包数据校验失败，请重新下载。", L"拷备", MB_ICONERROR);
+        MessageBoxW(nullptr, L"安装包数据校验失败，请重新下载。", L"KOPAL", MB_ICONERROR);
         CloseHandle(self);
         return 1;
     }
@@ -339,7 +339,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
     ReadFile(self, payloadMagic, 8, &read, nullptr);
 
     if (std::memcmp(payloadMagic, "CJIBT001", 8) != 0) {
-        MessageBoxW(nullptr, L"安装包数据损坏，请重新下载。", L"拷备", MB_ICONERROR);
+        MessageBoxW(nullptr, L"安装包数据损坏，请重新下载。", L"KOPAL", MB_ICONERROR);
         CloseHandle(self);
         return 1;
     }
@@ -347,7 +347,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
     unsigned int count = 0;
     ReadFile(self, &count, 4, &read, nullptr);
     if (count == 0 || count > 4096) {
-        MessageBoxW(nullptr, L"安装包数据异常。", L"拷备", MB_ICONERROR);
+        MessageBoxW(nullptr, L"安装包数据异常。", L"KOPAL", MB_ICONERROR);
         CloseHandle(self);
         return 1;
     }
@@ -357,7 +357,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
         unsigned short pathLen = 0;
         ReadFile(self, &pathLen, 2, &read, nullptr);
         if (pathLen == 0 || pathLen > 4096) {
-            MessageBoxW(nullptr, L"安装包数据异常。", L"拷备", MB_ICONERROR);
+            MessageBoxW(nullptr, L"安装包数据异常。", L"KOPAL", MB_ICONERROR);
             CloseHandle(self);
             return 1;
         }
@@ -395,7 +395,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
     const int screenW = GetSystemMetrics(SM_CXSCREEN);
     const int screenH = GetSystemMetrics(SM_CYSCREEN);
 
-    g_window = CreateWindowExW(WS_EX_TOOLWINDOW, wc.lpszClassName, L"拷备 安装程序",
+    g_window = CreateWindowExW(WS_EX_TOOLWINDOW, wc.lpszClassName, L"KOPAL 安装程序",
                                WS_POPUP, (screenW - width) / 2, (screenH - height) / 2,
                                width, height, nullptr, nullptr, instance, nullptr);
     ShowWindow(g_window, SW_SHOW);
@@ -473,7 +473,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
                  failedEntry.empty() ? L"未知文件" : failedEntry.c_str(),
                  (unsigned long)failedError, logPath);
         logLine(L"解压失败 entry=" + failedEntry + L" err=" + std::to_wstring(failedError));
-        MessageBoxW(g_window, detail, L"拷备", MB_ICONERROR);
+        MessageBoxW(g_window, detail, L"KOPAL", MB_ICONERROR);
         deleteTree(tempDir);
         DestroyWindow(g_window);
         return 1;
@@ -492,7 +492,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
                         nullptr, tempDir.c_str(), &si, &pi)) {
         wchar_t message[512];
         swprintf(message, 512, L"无法启动安装程序（错误码 %lu）。", GetLastError());
-        MessageBoxW(g_window, message, L"拷备", MB_ICONERROR);
+        MessageBoxW(g_window, message, L"KOPAL", MB_ICONERROR);
         deleteTree(tempDir);
         DestroyWindow(g_window);
         return 1;

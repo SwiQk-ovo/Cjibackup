@@ -20,6 +20,18 @@ QVector<Release> buildReleases()
 {
     QVector<Release> list;
 
+    // ---------------- 1.1.4 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("1.1.4");
+        release.date = QStringLiteral("2026-11-07");
+        release.items = {
+            {Kind::Changed, QStringLiteral("软件名统一成英文 KOPAL：窗口标题、侧栏、托盘、安装程序、快捷方式、exe 文件名全部换成 KOPAL，中文名不再出现")},
+            {Kind::Improved, QStringLiteral("安装/卸载时会一并清掉旧的中文名快捷方式，不会在桌面留下打不开的图标")},
+        };
+        list.append(release);
+    }
+
     // ---------------- 1.1.3 ----------------
     {
         Release release;
@@ -38,7 +50,7 @@ QVector<Release> buildReleases()
         release.date = QStringLiteral("2026-11-07");
         release.items = {
             {Kind::Improved, QStringLiteral("全新图标：琥珀色渐变 + 白色相机剪影，16 / 32 / 48 / 64 / 256 各档单独渲染")},
-            {Kind::Added, QStringLiteral("英文名 Kopal（柯巴脂，琥珀的原料）：把照片封存起来的意思，读音也贴「拷备」")},
+            {Kind::Added, QStringLiteral("英文名 Kopal（柯巴脂，琥珀的原料）：把照片封存起来的意思")},
         };
         list.append(release);
     }
@@ -49,9 +61,9 @@ QVector<Release> buildReleases()
         release.version = QStringLiteral("1.1.1");
         release.date = QStringLiteral("2026-11-07");
         release.items = {
-            {Kind::Changed, QStringLiteral("软件改名为「拷备」：窗口标题、托盘、安装程序、快捷方式、exe 文件名全部换掉")},
+            {Kind::Changed, QStringLiteral("软件从 C极备份 改名：窗口标题、托盘、安装程序、快捷方式、exe 文件名全部换掉")},
             {Kind::Improved, QStringLiteral("换了新图标：蓝色渐变圆角方块 + 白色「拷」字，大中小尺寸都重新排版")},
-            {Kind::Improved, QStringLiteral("exe 补齐版本信息：属性里能看到发布者 SwiQk-ovo、产品名 拷备、版本号")},
+            {Kind::Improved, QStringLiteral("exe 补齐版本信息：属性里能看到发布者 SwiQk-ovo、产品名 KOPAL、版本号")},
             {Kind::Fixed, QStringLiteral("从旧版本升级时，桌面上旧的「C极备份」快捷方式会自动清掉，不会留一个打不开的图标")},
         };
         list.append(release);

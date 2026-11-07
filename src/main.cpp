@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     // 注意：这个 key 决定 QSettings（注册表）和单实例的名字，
-    // 改名会让老用户的设置/历史全部读不到，所以即使软件已经改名成「拷备」也保持原值
+    // 改名会让老用户的设置/历史全部读不到，所以即使软件已经改名成「KOPAL」也保持原值
     app.setApplicationName("C极备份");
     app.setOrganizationName("Cjibackup");
 
