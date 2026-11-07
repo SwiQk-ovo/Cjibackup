@@ -6,13 +6,59 @@
 #include "widgets/changelogdialog.h"
 #include "widgets/typewritertooltip.h"
 
+#include "widgets/toast.h"
+
+#include <QClipboard>
 #include <QDesktopServices>
 #include <QDir>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QUrl>
 #include <QVBoxLayout>
+
+#include <functional>
+
+namespace {
+
+// 看上去像超链接（悬停变亮 + 下划线），点了走回调，而不是打开网页
+class ClickableLabel : public QLabel
+{
+public:
+    using QLabel::QLabel;
+
+    std::function<void()> onClick;
+
+protected:
+    void enterEvent(QEnterEvent *event) override
+    {
+        QLabel::enterEvent(event);
+        QFont f = font();
+        f.setUnderline(true);
+        setFont(f);
+        setStyleSheet(QStringLiteral("color:#93C5FD;"));
+    }
+
+    void leaveEvent(QEvent *event) override
+    {
+        QLabel::leaveEvent(event);
+        QFont f = font();
+        f.setUnderline(false);
+        setFont(f);
+        setStyleSheet(QStringLiteral("color:#3B82F6;"));
+    }
+
+    void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton && rect().contains(event->pos()) && onClick)
+            onClick();
+        QLabel::mouseReleaseEvent(event);
+    }
+};
+
+} // namespace
 
 AboutPage::AboutPage(QWidget *parent)
     : QWidget(parent)
@@ -95,6 +141,20 @@ AboutPage::AboutPage(QWidget *parent)
     links->addWidget(github);
 
     layout->addLayout(links);
+
+    // Bug 反馈群：点一下就复制群号
+    auto *bugGroup = new ClickableLabel(QStringLiteral("Bug 反馈群：1135151552（点击复制）"), this);
+    bugGroup->setObjectName(QStringLiteral("aboutLink"));
+    bugGroup->setAlignment(Qt::AlignCenter);
+    bugGroup->setCursor(Qt::PointingHandCursor);
+    bugGroup->setToolTip(QStringLiteral("左键单击复制群号"));
+    bugGroup->onClick = []() {
+        QGuiApplication::clipboard()->setText(QStringLiteral("1135151552"));
+        Toast::showToast(QStringLiteral("已复制"),
+                         QStringLiteral("Bug 反馈群号 1135151552 已复制到剪贴板，在 QQ 里搜索就能进群"),
+                         Toast::Success, 3000);
+    };
+    layout->addWidget(bugGroup);
 
     auto *dataDir = new QLabel(
         QString("数据目录：%1").arg(Cji::dataDir()), this);

@@ -5,6 +5,20 @@
 
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
+#include <QTextStream>
+#include <QDateTime>
+
+static void backupLog(const QString &msg)
+{
+    QFile f(QDir::tempPath() + QStringLiteral("/kopal_backup.log"));
+    if (f.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&f);
+        out << QDateTime::currentDateTime().toString("hh:mm:ss.zzz") << "  " << msg << "\n";
+    }
+}
+#include <QStorageInfo>
+#include <QLocale>
 #include <QDirIterator>
 #include <QElapsedTimer>
 #include <QFile>
@@ -94,6 +108,18 @@ void BackupEngine::start(const QString &source, const QString &target)
     if (state() == Running || state() == Paused)
         return;
 
+    // 连点两次「开始传输」会同时进这里：collectFiles() 很慢，
+    // 第二个调用会在第一个还没把状态切到 Running 时也进来，导致计划被清两遍
+    {
+        bool expected = false;
+        if (!m_starting.compare_exchange_strong(expected, true))
+            return;
+    }
+    struct StartGuard {
+        std::atomic<bool> &flag;
+        ~StartGuard() { flag = false; }
+    } startGuard{m_starting};
+
     // 主线程快照设置：后台线程不再碰 QSettings
     SettingsManager *sm = SettingsManager::instance();
     m_source = source;
@@ -117,7 +143,27 @@ void BackupEngine::start(const QString &source, const QString &target)
         m_workers.clear();
     }
     m_nextIndex.store(0);
+    m_copyStarted = false;
     m_emitTimer = QElapsedTimer();
+
+    // 防呆：目标目录必须能创建，不能等于源目录、也不能在源目录里面
+    const QString targetClean = QDir::cleanPath(QDir(target).absolutePath());
+    const QString sourceClean = QDir::cleanPath(QDir(source).absolutePath());
+    if (targetClean.compare(sourceClean, Qt::CaseInsensitive) == 0) {
+        setState(Idle);
+        emit errorOccurred(QString("目标文件夹和源文件夹是同一个，换一个目标再试"));
+        return;
+    }
+    if (targetClean.startsWith(sourceClean + QLatin1Char('/'), Qt::CaseInsensitive)) {
+        setState(Idle);
+        emit errorOccurred(QString("目标文件夹不能放在源文件夹里面"));
+        return;
+    }
+    if (!QDir().mkpath(targetClean)) {
+        setState(Idle);
+        emit errorOccurred(QString("无法创建目标文件夹：%1").arg(targetClean));
+        return;
+    }
 
     collectFiles();
 
@@ -126,6 +172,25 @@ void BackupEngine::start(const QString &source, const QString &target)
         emit errorOccurred(QString("源文件夹里没有找到可备份的文件：%1").arg(source));
         return;
     }
+
+    // 空间不够就别开始，免得拷到一半全是失败
+    {
+        QStorageInfo storage(targetClean);
+        if (storage.isValid()) {
+            const qint64 available = storage.bytesAvailable();
+            if (available > 0 && m_stats.totalBytes + (256LL << 20) > available) {
+                setState(Idle);
+                emit errorOccurred(QString("目标盘空间不够：需要 %1，可用 %2")
+                                       .arg(QLocale().formattedDataSize(m_stats.totalBytes),
+                                            QLocale().formattedDataSize(available)));
+                return;
+            }
+        }
+    }
+
+    backupLog(QString("start: src=%1 dst=%2 files=%3 bytes=%4 threads=%5 verify=%6")
+                  .arg(source, target).arg(m_stats.totalFiles).arg(m_stats.totalBytes)
+                  .arg(m_threads).arg(m_verifyEnabled));
 
     setState(Running);
 
@@ -444,6 +509,7 @@ void BackupEngine::copyLoop()
         const int index = m_nextIndex.fetch_add(1);
         if (index >= m_plan.size())
             return;
+        m_copyStarted = true;
 
         copyOne(m_plan.at(index));
         emitProgress(false);
@@ -516,6 +582,23 @@ void BackupEngine::runBackup()
     }
 
     emitProgress(true);
+
+    backupLog(QString("copy done: plan=%1 copied=%2 failed=%3 started=%4")
+                  .arg(m_plan.size()).arg(m_stats.copiedFiles)
+                  .arg(m_stats.failedCount).arg(m_copyStarted));
+
+    // 一个都没拷、也没有失败记录：说明复制阶段压根没跑起来（内部状态异常）
+    if (!m_copyStarted && !m_plan.isEmpty()) {
+        backupLog("复制阶段没有执行：nextIndex 没有取到任务");
+        {
+            QMutexLocker lock(&m_mutex);
+            m_state = Idle;
+        }
+        emit stateChanged(Idle);
+        emit errorOccurred(QString("复制阶段没有执行（内部状态异常）。\n请把 %1 发给作者")
+                               .arg(QDir::tempPath() + QStringLiteral("/kopal_backup.log")));
+        return;
+    }
 
     if (m_verifyEnabled)
         verifyAll();

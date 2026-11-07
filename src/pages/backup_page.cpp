@@ -523,6 +523,10 @@ void BackupPage::onStateChanged(BackupEngine::State)
 void BackupPage::onError(const QString &message)
 {
     m_noticeLabel->setText(message);
+
+    // 还没开始就失败（空间不够 / 目录建不了 / 目标不合法）：直接弹框，别只写在角落
+    if (m_engine->state() == BackupEngine::Idle)
+        DarkDialog::warning(this, "无法开始备份", message);
 }
 
 void BackupPage::onCompleted()
@@ -535,6 +539,23 @@ void BackupPage::onCompleted()
 
     bool verifiedOk = true;
 
+    // 一个文件都没拷进去、而且有失败记录：这是复制阶段就挂了，别拿"补拷"糊弄用户
+    if (stats.copiedFiles == 0 && stats.failedCount > 0) {
+        const QStringList failed = m_engine->failedFiles();
+        QString detail = failed.mid(0, 3).join(QStringLiteral("\n"));
+        if (failed.size() > 3)
+            detail += QStringLiteral("\n…共 %1 个").arg(failed.size());
+        m_noticeLabel->setText(
+            QString("复制失败：%1 个文件一个都没进去").arg(stats.failedCount));
+        DarkDialog::critical(this, "复制失败",
+                             QString("有 %1 个文件复制失败，一个都没写进目标文件夹。\n\n"
+                                     "常见原因：目标盘没空间、没有写入权限、文件被杀毒软件占用。\n\n"
+                                     "失败的文件：\n%2")
+                                 .arg(stats.failedCount)
+                                 .arg(detail));
+        return;
+    }
+
     if (verify.ran) {
         verifiedOk = (verify.missing == 0);
         if (verifiedOk) {
@@ -543,7 +564,7 @@ void BackupPage::onCompleted()
         } else {
             m_noticeLabel->setText(
                 QString("校验发现 %1 个文件缺失或不完整").arg(verify.missing));
-            const bool retry = DarkDialog::question(
+            const bool retry = stats.copiedFiles > 0 && DarkDialog::question(
                 this, "校验未通过",
                 QString("有 %1 个文件没有完整拷贝到目标目录。\n"
                         "要现在自动补拷一遍吗？（已存在的文件会自动跳过）")

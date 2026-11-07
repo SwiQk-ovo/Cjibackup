@@ -15,6 +15,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QTimer>
+
 #include <QVBoxLayout>
 
 namespace {
@@ -180,68 +181,35 @@ void GuideOverlay::setStep(int index)
     ++m_pending;
     const int token = m_pending;
     m_holeRect = QRect();
-    m_holePixmap = QPixmap();
     update();
 
-    QTimer::singleShot(280, this, [this, token]() {
+    // 下一轮事件循环再量尺寸：prepare() 刚刚切过页面，布局需要一次刷新
+    QTimer::singleShot(30, this, [this, token]() {
         if (!m_active || token != m_pending)
             return;
-        captureTarget();
+        computeHole();
         layoutCard();
         update();
     });
 }
 
-void GuideOverlay::captureTarget()
+void GuideOverlay::computeHole()
 {
     QWidget *target = (m_index < m_steps.size() && m_steps.at(m_index).target)
                           ? m_steps.at(m_index).target()
                           : nullptr;
 
     if (!target || !target->isVisible() || target->width() <= 0 || target->height() <= 0) {
-        m_holeRect = QRect();
-        m_holePixmap = QPixmap();
+        // 目标暂时不可见：保留上一次的高亮，别让它消失一帧
         return;
     }
 
-    scrollIntoView(target);
 
+    // 直接在真实控件上开洞，不截屏、不缩放，所以不会糊
     const QPoint origin = target->mapTo(m_host, QPoint(0, 0));
-    m_holeRect = QRect(origin, target->size());
-
-    // 直接把"整个窗口内容"渲染出来再裁一块，这样高亮区域里的背景
-    // 和真实界面一致（单独 grab 目标控件会丢掉父级背景，出现白底）。
-    // 注意渲染 centralWidget 而不是主窗口本身——高亮遮罩是主窗口的子控件，
-    // 渲染 centralWidget 刚好把它排除在外。
-    QPixmap full(m_host->size());
-    full.fill(QColor(0x16, 0x1A, 0x23));
-    QWidget *content = m_host;
-    if (auto *mainWindow = qobject_cast<QMainWindow *>(m_host)) {
-        if (mainWindow->centralWidget())
-            content = mainWindow->centralWidget();
-    }
-
-    // 页面切换用的 QGraphicsOpacityEffect 会缓存上一帧，
-    // 直接 render 会出现重影；渲染期间先把它关掉，画完再恢复。
-    QVector<QGraphicsEffect *> disabledEffects;
-    for (QWidget *w = target; w && w != m_host; w = w->parentWidget()) {
-        if (QGraphicsEffect *effect = w->graphicsEffect()) {
-            if (effect->isEnabled()) {
-                effect->setEnabled(false);
-                disabledEffects.append(effect);
-            }
-        }
-    }
-
-    content->render(&full, QPoint(0, 0), QRegion(),
-                    QWidget::DrawWindowBackground | QWidget::DrawChildren);
-
-    for (QGraphicsEffect *effect : disabledEffects)
-        effect->setEnabled(true);
-
-    m_holePixmap = full.copy(m_holeRect);
+    m_holeRect = QRect(origin, target->size()).adjusted(-6, -6, 6, 6);
+    m_holeRect = m_holeRect.intersected(rect());
 }
-
 void GuideOverlay::updateCard()
 {
     if (m_index >= m_steps.size())
@@ -313,27 +281,27 @@ void GuideOverlay::paintEvent(QPaintEvent *)
     painter.setRenderHint(QPainter::Antialiasing, true);
 
     QColor mask = kMask;
-    mask.setAlphaF(qBound<qreal>(0.0, m_fade, 1.0) * 196.0 / 255.0);
-    painter.fillRect(rect(), mask);
+    mask.setAlphaF(qBound<qreal>(0.0, m_fade, 1.0) * 200.0 / 255.0);
 
-    if (m_holePixmap.isNull() || m_holeRect.isEmpty())
+    if (m_holeRect.isEmpty()) {
+        painter.fillRect(rect(), mask);
         return;
+    }
 
-    const QRectF hole = QRectF(m_holeRect).adjusted(-1.5, -1.5, 1.5, 1.5);
+    const QRectF hole = QRectF(m_holeRect);
+
+    // 遮罩直接"挖掉"高亮区域：下面就是真实控件，不经过任何截图/缩放
+    QPainterPath maskPath;
+    maskPath.addRect(QRectF(rect()));
+    maskPath = maskPath.subtracted(Squircle::path(hole, 12));
+    painter.fillPath(maskPath, mask);
 
     // 高亮圈外面的柔光
     painter.setBrush(Qt::NoBrush);
     painter.setPen(QPen(QColor(59, 130, 246, 55), 7.0));
     painter.drawPath(Squircle::path(hole.adjusted(-3, -3, 3, 3), 15));
 
-    // 把目标控件的内容原样"开个洞"露出来
-    QPainterPath clip;
-    clip = Squircle::path(hole, 12);
-    painter.save();
-    painter.setClipPath(clip);
-    painter.drawPixmap(m_holeRect.topLeft(), m_holePixmap);
-    painter.restore();
-
+    // 贴着控件画一圈描边
     painter.setPen(QPen(kAccent, 2.0));
     painter.drawPath(Squircle::path(hole, 12));
 }

@@ -128,6 +128,8 @@ private:
     bool m_paused = false;
     bool m_stopped = false;
     std::atomic<int> m_nextIndex{0};
+    std::atomic<bool> m_copyStarted{false};
+    std::atomic<bool> m_starting{false};   // 防止连点「开始传输」重复进入 start()
 
     QElapsedTimer m_emitTimer;
     QElapsedTimer m_runTimer;

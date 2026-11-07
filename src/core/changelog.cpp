@@ -20,6 +20,23 @@ QVector<Release> buildReleases()
 {
     QVector<Release> list;
 
+    // ---------------- 1.1.5 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("1.1.5");
+        release.date = QStringLiteral("2026-11-07");
+        release.items = {
+            {Kind::Fixed, QStringLiteral("使用引导的高亮改成直接在真实界面上开洞：不再整页截图，所以不糊；切换步骤不再闪一下；高亮框贴合整张卡片")},
+            {Kind::Fixed, QStringLiteral("备份前增加防呆检查：目标目录能否创建、是否和源相同或在源内部、目标盘空间够不够，不满足直接提示，不会白跑")},
+            {Kind::Fixed, QStringLiteral("复制阶段全部失败时明确弹「复制失败」并列出文件，不再误报成「校验未通过，要不要补拷」")},
+            {Kind::Fixed, QStringLiteral("防止连点「开始传输」导致重复进入、计划被清两遍（之前会出现 0/29 却提示校验未通过）")},
+            {Kind::Improved, QStringLiteral("备份过程写诊断日志 %TEMP%\\kopal_backup.log，出问题能直接看是哪一步断的")},
+            {Kind::Added, QStringLiteral("关于页新增「Bug 反馈群」：左键单击自动复制群号，悬停有超链接效果")},
+            {Kind::Improved, QStringLiteral("分组卡片的标题上方留出空隙，不再贴着卡片上边缘")},
+        };
+        list.append(release);
+    }
+
     // ---------------- 1.1.4 ----------------
     {
         Release release;

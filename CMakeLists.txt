@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Cjibackup VERSION 1.1.4 LANGUAGES CXX)
+project(Cjibackup VERSION 1.1.5 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -244,6 +244,21 @@ if(CJI_BUILD_TESTS)
     )
     target_link_libraries(backup_smoke PRIVATE Qt6::Core)
     target_include_directories(backup_smoke PRIVATE src)
+
+    # 临时探针（跑真实目录，验证复制/校验行为）
+    qt_add_executable(engine_probe
+        tests/engine_probe.cpp
+        src/core/backupengine.cpp
+        src/core/backupengine.h
+        src/core/exifscanner.cpp
+        src/core/exifscanner.h
+        src/core/flowpath.cpp
+        src/core/flowpath.h
+        src/core/settingsmanager.cpp
+        src/core/settingsmanager.h
+    )
+    target_link_libraries(engine_probe PRIVATE Qt6::Core)
+    target_include_directories(engine_probe PRIVATE src)
 
     qt_add_executable(core_tests
         tests/core_tests.cpp

@@ -54,7 +54,7 @@ protected:
 
 private:
     void setStep(int index);
-    void captureTarget();
+    void computeHole();
     void updateCard();
     void layoutCard();
     void finish();
@@ -73,7 +73,6 @@ private:
     QPushButton *m_skipBtn = nullptr;
 
     QRect m_holeRect;
-    QPixmap m_holePixmap;
     int m_pending = 0;
 
     QVariantAnimation *m_fadeAnim = nullptr;

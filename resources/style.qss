@@ -1141,6 +1141,9 @@ QLabel#emptyState {
 QGroupBox[squircle="true"] {
     background: transparent;
     border: none;
+    /* 卡片是自绘的，标题往下挪一点，别贴着卡片上边缘 */
+    margin-top: 26px;
+    padding-top: 18px;
 }
 /* 关于页的英文名 */
 QLabel#aboutEnglish {
@@ -1192,4 +1195,9 @@ QListWidget#eventsList::item {
 
 QListWidget#eventsList::item:hover {
     background-color: #1B2130;
+}
+/* 关于页的可点击文本（Bug 反馈群） */
+QLabel#aboutLink {
+    color: #3B82F6;
+    font-size: 12px;
 }
