@@ -51,3 +51,12 @@ cd build
 ## 许可证
 
 MIT，见 [LICENSE](LICENSE)。
+
+---
+
+## 反馈与交流
+
+- **Bug 反馈 / 使用问题：QQ 群 `1135151552`**（也可以直接扫群号搜索进群）
+- 提 Issue：<https://github.com/SwiQk-ovo/Cjibackup/issues>
+- 软件里「关于」页也有这个群号，左键单击就能复制
+
