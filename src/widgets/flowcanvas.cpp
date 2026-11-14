@@ -298,53 +298,50 @@ void FlowNodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QW
                               ? (m_hovered ? kAccentSoft : kAccent)
                               : (m_hovered ? QColor(70, 78, 94) : kCardBorder);
 
-    // 合并节点：外面多一圈浅色光带，一眼看出"这几个分类被捆在一起了"
+    // 合并节点：虚线外框，不加填充、不加发光
     if (m_merged) {
-        painter->setPen(QPen(QColor(76, 141, 255, 120), 1.0));
-        painter->setBrush(QColor(76, 141, 255, 22));
-        painter->drawRoundedRect(body.adjusted(-4, -4, 4, 4), 15, 15);
+        QPen halo(QColor(96, 165, 250, 150), 1.0, Qt::DashLine);
+        halo.setDashPattern({4.0, 4.0});
+        painter->setPen(halo);
+        painter->setBrush(Qt::NoBrush);
+        painter->drawRoundedRect(body.adjusted(-4, -4, 4, 4), 12, 12);
     }
-
-    // 阴影
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(QColor(0, 8, 20, m_active ? 90 : 50));
-    painter->drawRoundedRect(body.translated(0, 2), 12, 12);
 
     // 卡片
     painter->setBrush(m_active ? kCardBg : kCardBgDim);
-    painter->setPen(QPen(border, m_active ? 1.6 : 1.2));
-    painter->drawRoundedRect(body, 12, 12);
+    painter->setPen(QPen(border, 1.0));
+    painter->drawRoundedRect(body, 9, 9);
 
     // 左侧层级色条
     painter->setPen(Qt::NoPen);
-    painter->setBrush(m_active ? kAccent : QColor(58, 64, 78));
-    painter->drawRoundedRect(QRectF(4, 12, 3, kNodeH - 24), 1.5, 1.5);
+    painter->setBrush(m_active ? kAccent : QColor(70, 68, 64));
+    painter->drawRoundedRect(QRectF(4, 12, 2, kNodeH - 24), 1.0, 1.0);
 
     // 标题
     QFont font = painter->font();
-    font.setBold(true);
-    font.setPixelSize(14);
+    font.setWeight(QFont::DemiBold);
+    font.setPixelSize(13);
     painter->setFont(font);
-    painter->setPen(m_active ? kTextMain : QColor(170, 176, 188));
+    painter->setPen(m_active ? kTextMain : QColor(170, 166, 158));
     painter->drawText(QRectF(14, 8, kNodeW - 24, 18), Qt::AlignLeft | Qt::AlignVCenter,
                       elided(painter, title(), kNodeW - 26));
 
     // 副标题
     const QString sub = subtitle();
     if (!sub.isEmpty()) {
-        font.setBold(false);
-        font.setPixelSize(12);
+        font.setWeight(QFont::Normal);
+        font.setPixelSize(11);
         painter->setFont(font);
-        painter->setPen(m_active ? kTextDim : QColor(112, 119, 132));
+        painter->setPen(m_active ? kTextDim : QColor(112, 109, 103));
         painter->drawText(QRectF(14, 28, kNodeW - 24, 16), Qt::AlignLeft | Qt::AlignVCenter,
                           elided(painter, sub, kNodeW - 26));
     }
 
     // 端口
     painter->setPen(Qt::NoPen);
-    painter->setBrush(m_active ? kAccent : QColor(64, 71, 86));
-    painter->drawEllipse(QPointF(1.5, kNodeH / 2.0), 3.2, 3.2);
-    painter->drawEllipse(QPointF(kNodeW - 1.5, kNodeH / 2.0), 3.2, 3.2);
+    painter->setBrush(m_active ? kAccent : QColor(74, 72, 68));
+    painter->drawEllipse(QPointF(1.5, kNodeH / 2.0), 2.6, 2.6);
+    painter->drawEllipse(QPointF(kNodeW - 1.5, kNodeH / 2.0), 2.6, 2.6);
 }
 
 QVariant FlowNodeItem::itemChange(GraphicsItemChange change, const QVariant &value)
@@ -1178,41 +1175,15 @@ void drawDraggingLink(QPainter *painter, const QPointF &from, const QPointF &to,
 
 void FlowScene::drawBackground(QPainter *painter, const QRectF &rect)
 {
+    Q_UNUSED(rect)
     painter->setRenderHint(QPainter::Antialiasing, true);
 
     const QRectF box = sceneRect().adjusted(1, 1, -1, -1);
     QPainterPath panel;
-    panel.addRoundedRect(box, 12, 12);
+    panel.addRoundedRect(box, 10, 10);
 
+    // 干净的暗面，不再铺点阵：流程图靠节点和连线本身说话
     painter->fillPath(panel, kCanvasBg);
-
-    painter->save();
-    painter->setClipPath(panel);
-    painter->setPen(QPen(QColor(34, 39, 50)));
-
-    // 只画露出来的那部分点阵，避免整幅重绘时白跑一遍循环
-    const QRectF gridArea = rect.intersected(box);
-    if (!gridArea.isEmpty()) {
-        const qreal step = 20.0;
-        const qreal originX = box.left() + 18.0;
-        const qreal originY = box.top() + 18.0;
-        const qreal startX = originX + qCeil((gridArea.left() - originX) / step) * step;
-        const qreal startY = originY + qCeil((gridArea.top() - originY) / step) * step;
-
-        QVector<QPointF> dots;
-        const int cols = int(qMax<qreal>(0, (gridArea.right() - startX) / step)) + 1;
-        const int rows = int(qMax<qreal>(0, (gridArea.bottom() - startY) / step)) + 1;
-        if (qint64(cols) * qint64(rows) <= 40000) {
-            dots.reserve(cols * rows);
-            for (int r = 0; r < rows; ++r) {
-                for (int c = 0; c < cols; ++c)
-                    dots.append(QPointF(startX + c * step, startY + r * step));
-            }
-            if (!dots.isEmpty())
-                painter->drawPoints(dots.constData(), dots.size());
-        }
-    }
-    painter->restore();
 
     // 连线画在节点下面：即使位置有重叠，也会被节点卡片盖住，不会糊在边框上
     for (auto it = m_next.constBegin(); it != m_next.constEnd(); ++it) {
@@ -1238,8 +1209,8 @@ void FlowScene::paintArrow(QPainter *painter, const QPointF &from, const QPointF
     Q_UNUSED(dashed)
 
     const qreal gap = 6.0;       // 离节点边缘留的空隙，箭头不会糊在边框上
-    const qreal headLen = 9.0;
-    const qreal headHalf = 4.6;
+    const qreal headLen = 7.0;
+    const qreal headHalf = 3.8;
 
     const QPointF start = from + QPointF(gap, 0);
     const QPointF tip = to - QPointF(gap - 2.0, 0);
@@ -1286,17 +1257,7 @@ void FlowScene::paintArrow(QPainter *painter, const QPointF &from, const QPointF
         path.lineTo(tip - QPointF(headLen, 0));
     }
 
-    // 底部柔光，让连线有点"发光"的感觉
-    if (active) {
-        QPen glowPen(QColor(kAccent.red(), kAccent.green(), kAccent.blue(), 34), 7);
-        glowPen.setCapStyle(Qt::RoundCap);
-        glowPen.setJoinStyle(Qt::RoundJoin);
-        painter->setPen(glowPen);
-        painter->setBrush(Qt::NoBrush);
-        painter->drawPath(path);
-    }
-
-    QPen pen(active ? kAccent : kLinkIdle, active ? 2.0 : 1.6);
+    QPen pen(active ? kAccent : kLinkIdle, active ? 1.8 : 1.2);
     pen.setCapStyle(Qt::RoundCap);
     pen.setJoinStyle(Qt::RoundJoin);
     painter->setPen(pen);
@@ -1360,9 +1321,9 @@ void FlowScene::drawForeground(QPainter *painter, const QRectF &rect)
     // 拖分类项到节点上：把那个节点整体圈出来，松手就合并进去
     if (m_dropTarget) {
         const QRectF box(m_dropTarget->pos(), QSizeF(kNodeW, kNodeH));
-        painter->setPen(QPen(kAccentSoft, 2.0));
-        painter->setBrush(QColor(76, 141, 255, 30));
-        painter->drawRoundedRect(box.adjusted(-5, -5, 5, 5), 15, 15);
+        painter->setPen(QPen(kAccentSoft, 1.5, Qt::DashLine));
+        painter->setBrush(QColor(59, 130, 246, 20));
+        painter->drawRoundedRect(box.adjusted(-5, -5, 5, 5), 11, 11);
 
         QFont font = painter->font();
         font.setPixelSize(12);

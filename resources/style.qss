@@ -2,7 +2,7 @@
 
 * {
     font-family: "Microsoft YaHei UI", "微软雅黑", sans-serif;
-    font-size: 15px;
+    font-size: 13px;
     color: #FFFFFF;
 }
 
@@ -17,7 +17,7 @@ QFrame#sidebar {
 }
 
 QLabel#logoLabel {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
     color: #FFFFFF;
     padding: 10px 0;
@@ -25,12 +25,12 @@ QLabel#logoLabel {
 
 QPushButton#navButton {
     text-align: left;
-    padding-left: 30px;
+    padding-left: 24px;
     border: none;
     border-radius: 8px;
     background: transparent;
     color: #9C9C9F;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 QPushButton#navButton:hover {
@@ -45,7 +45,7 @@ QPushButton#navButton:checked {
 
 QFrame#navSlider {
     background-color: #26282C;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 /* 内容区 */
@@ -54,7 +54,7 @@ QStackedWidget#contentArea {
 }
 
 QLabel#pageTitle {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
     color: #FFFFFF;
 }
@@ -62,7 +62,7 @@ QLabel#pageTitle {
 /* 分组框 */
 QGroupBox {
     background-color: #1B1B1D;
-    border-radius: 16px;
+    border-radius: 8px;
     border: 1px solid #2E2E31;
     margin-top: 15px;
     padding: 15px;
@@ -80,7 +80,7 @@ QGroupBox::title {
 QLineEdit {
     background-color: #262628;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 16px;
+    border-radius: 8px;
     padding: 8px 16px;
     color: #EDEDEE;
 }
@@ -93,7 +93,7 @@ QLineEdit:focus {
 QPushButton {
     background-color: #262628;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 18px;
+    border-radius: 7px;
     padding: 8px 18px;
     color: #EDEDEE;
 }
@@ -116,7 +116,7 @@ QPushButton#primaryBtn {
     color: #131314;
     font-weight: 600;
     border: none;
-    border-radius: 20px;
+    border-radius: 7px;
     padding: 10px 30px;
 }
 
@@ -137,7 +137,7 @@ QPushButton#primaryBtn:disabled {
 QComboBox {
     background-color: #262628;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 16px;
+    border-radius: 8px;
     padding: 7px 30px 7px 16px;
     color: #EDEDEE;
     min-height: 18px;
@@ -240,7 +240,7 @@ QProgressBar::chunk {
 QListWidget {
     background-color: #1B1B1D;
     border: 1px solid #2E2E31;
-    border-radius: 12px;
+    border-radius: 10px;
     padding: 8px;
 }
 
@@ -267,7 +267,7 @@ QSlider::handle:horizontal {
     height: 18px;
     margin: -6px 0;
     background: #4C8DFF;
-    border-radius: 9px;
+    border-radius: 6px;
 }
 
 /* 流程图：分类项面板 */
@@ -288,7 +288,7 @@ QLabel#flowChip:hover {
 /* 流程图：目录预览 / 状态提示 */
 QLabel#flowPreview {
     color: #8EA2C0;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 QLabel#flowStatus {
@@ -323,7 +323,7 @@ QScrollArea#pageScroll > QWidget > QWidget {
 
 QLabel#settingLabel {
     color: #EDEDEE;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 QWidget#settingRow {
@@ -337,7 +337,7 @@ QWidget#pageContent {
 /* 次要说明文字 */
 QLabel#hintLabel {
     color: #6E747C;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 QLabel#noticeLabel {
@@ -377,14 +377,14 @@ QMenu::separator {
 
 /* 关于页 */
 QLabel#aboutLogo {
-    font-size: 36px;
+    font-size: 28px;
     font-weight: bold;
     color: #FFFFFF;
 }
 
 QLabel#versionLabel {
     color: #9C9C9F;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 /* 滚动条 */
@@ -454,7 +454,7 @@ QLabel#helpIcon:hover {
 QSpinBox, QTimeEdit, QDateEdit, QDoubleSpinBox {
     background-color: #262628;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 16px;
+    border-radius: 8px;
     padding: 7px 14px;
     color: #EDEDEE;
     min-height: 18px;
@@ -474,7 +474,7 @@ QLineEdit:disabled, QCheckBox:disabled, QPushButton:disabled {
 QSpinBox, QTimeEdit, QDateEdit, QDoubleSpinBox {
     background-color: #262628;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 16px;
+    border-radius: 8px;
     padding: 7px 14px;
     color: #EDEDEE;
     min-height: 18px;
@@ -575,13 +575,13 @@ QDialog#changelogDialog {
 
 QLabel#changelogTitle {
     color: #FFFFFF;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
 }
 
 QLabel#changelogVersion {
     color: #60A5FA;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
 }
 
@@ -593,12 +593,12 @@ QLabel#changelogDate {
 
 QLabel#changelogBody {
     color: #C9D1E0;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 QLabel#changelogBullet {
     color: #9AA4B6;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 QScrollArea#changelogScroll,
@@ -630,7 +630,7 @@ QPushButton#ghostBtn:pressed {
 
 QLabel#dialogText {
     color: #E3E7EE;
-    font-size: 15px;
+    font-size: 13px;
     line-height: 20px;
 }
 
@@ -681,7 +681,7 @@ QDialog#separatorDialog {
 
 QLabel#sepTitle {
     color: #FFFFFF;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
 }
 
@@ -693,10 +693,10 @@ QLabel#sepHint {
 QPushButton#sepChip {
     background-color: #262628;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 14px;
+    border-radius: 10px;
     padding: 7px 16px;
     color: #EDEDEE;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 QPushButton#sepChip:hover {
@@ -731,7 +731,7 @@ QFileDialog QLabel {
 QFileDialog QLineEdit, QFileDialog QComboBox {
     background-color: #262628;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 16px;
+    border-radius: 8px;
     padding: 7px 30px 7px 16px;
     color: #EDEDEE;
     min-height: 18px;
@@ -802,7 +802,7 @@ QFrame#toastCard {
 
 QLabel#toastTitle {
     color: #FFFFFF;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
     background: transparent;
 }
@@ -856,7 +856,7 @@ QPushButton#pickerIconButton {
     border: 1px solid #2E2E31;
     border-radius: 8px;
     color: #C9D2E0;
-    font-size: 15px;
+    font-size: 13px;
     padding: 0;
 }
 
@@ -984,7 +984,7 @@ QListWidget#pickerPlaces::item {
 QWidget#guideCard {
     background-color: #1B1B1D;
     border: 1px solid #2F3746;
-    border-radius: 14px;
+    border-radius: 10px;
 }
 
 QLabel#guideStep {
@@ -994,13 +994,13 @@ QLabel#guideStep {
 
 QLabel#guideTitle {
     color: #FFFFFF;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
 }
 
 QLabel#guideBody {
     color: #A8B3C6;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 QPushButton#guideSkip {
@@ -1052,20 +1052,20 @@ QFrame#updateShell {
 
 QLabel#updateTitle {
     color: #FFFFFF;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
 }
 
 QLabel#updateSubtitle {
     color: #6E747C;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 QPushButton#updateClose {
     background: transparent;
     border: none;
     color: #8A93A5;
-    font-size: 20px;
+    font-size: 22px;
     border-radius: 8px;
 }
 
@@ -1086,7 +1086,7 @@ QLabel#updateBannerCaption {
 
 QLabel#updateBannerValue {
     color: #FFFFFF;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
 }
 
@@ -1102,7 +1102,7 @@ QFrame#updateStatusBar {
 
 QLabel#updateStatusText {
     color: #C9D1E0;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 QProgressBar#updateProgress {
@@ -1122,7 +1122,7 @@ QProgressBar#updateProgress::chunk {
 QLabel#updateChip {
     background-color: #262628;
     border: 1px solid #2F3746;
-    border-radius: 9px;
+    border-radius: 6px;
     padding: 2px 8px;
     color: #A8B3C6;
     font-size: 13px;
@@ -1135,19 +1135,19 @@ QFrame#updateCard {
 
 QLabel#updateCardTitle {
     color: #E6EAF2;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
 }
 
 QLabel#updateCardTitlePre {
     color: #FBBF24;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
 }
 
 QLabel#updateVersion {
     color: #FFFFFF;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
 }
 
@@ -1263,7 +1263,7 @@ QPushButton#updateSecondary:hover {
 /* 空状态提示 */
 QLabel#emptyState {
     color: #6E7888;
-    font-size: 15px;
+    font-size: 13px;
     line-height: 22px;
 }
 
@@ -1291,7 +1291,7 @@ QLabel#pageMeta {
 
 QLabel#historyRowTitle {
     color: #E8EDF5;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 QLabel#historyRowMeta {
@@ -1336,7 +1336,7 @@ QToolButton#albumViewBtn {
     border: 1px solid #262C39;
     border-radius: 8px;
     color: #9C9C9F;
-    font-size: 15px;
+    font-size: 13px;
 }
 QToolButton#albumViewBtn:hover { border-color: #4C8DFF; color: #FFFFFF; }
 QToolButton#albumViewBtn:checked { background: #4C8DFF; border-color: #4C8DFF; color: #FFFFFF; }
@@ -1358,5 +1358,22 @@ QListView#albumView { background: transparent; border: none; outline: none; }
 QWidget#albumBar {
     background: #17181A;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 16px;
+    border-radius: 8px;
+}
+
+/* ---------------- unslop 结构调整（颜色沿用原主题） ---------------- */
+QProgressBar#backupProgress {
+    background-color: #262628;
+    border: none;
+    border-radius: 4px;
+}
+
+QProgressBar#backupProgress::chunk {
+    background-color: #4C8DFF;
+    border-radius: 4px;
+}
+
+QLabel#statValue {
+    color: #C9D2E0;
+    font-size: 12px;
 }

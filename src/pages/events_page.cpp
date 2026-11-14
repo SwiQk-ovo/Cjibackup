@@ -15,8 +15,8 @@ EventsPage::EventsPage(QWidget *parent)
     : QWidget(parent)
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(30, 30, 30, 30);
-    layout->setSpacing(15);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(12);
 
     auto *topBar = new QHBoxLayout();
     QLabel *title = new QLabel("事件管理", this);

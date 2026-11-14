@@ -102,8 +102,8 @@ void SettingsPage::setupUI()
     scroll->setWidget(content);
 
     auto *layout = new QVBoxLayout(content);
-    layout->setContentsMargins(26, 24, 26, 24);
-    layout->setSpacing(16);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(12);
 
     auto *title = new QLabel("设置", content);
     title->setObjectName("pageTitle");

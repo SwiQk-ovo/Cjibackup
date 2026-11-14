@@ -46,9 +46,9 @@ protected:
         const QRectF box = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
         painter.setPen(QPen(QColor(0x2F, 0x37, 0x46), 1.0));
         painter.setBrush(QColor(0x1F, 0x24, 0x31));
-        painter.drawRoundedRect(box, 12, 12);
+        painter.drawRoundedRect(box, 10, 10);
 
-        painter.setPen(QPen(QColor(0x60, 0xA5, 0xFA), 2.2, Qt::SolidLine, Qt::RoundCap,
+        painter.setPen(QPen(QColor(0x60, 0xA5, 0xFA), 1.8, Qt::SolidLine, Qt::RoundCap,
                             Qt::RoundJoin));
         painter.setBrush(Qt::NoBrush);
         const QPointF c = box.center();
@@ -219,7 +219,7 @@ void UpdateDialog::buildUi()
     outer->setSpacing(0);
 
     auto *shell = new SquircleCard(this);
-    shell->setRadius(16);
+    shell->setRadius(10);
     shell->setFill(QColor(0x14, 0x18, 0x21));
     shell->setBorder(QColor(0x2A, 0x2C, 0x30));
     shell->setObjectName(QStringLiteral("updateShell"));
@@ -227,7 +227,7 @@ void UpdateDialog::buildUi()
 
     auto *root = new QVBoxLayout(shell);
     root->setContentsMargins(24, 20, 24, 18);
-    root->setSpacing(14);
+    root->setSpacing(12);
 
     buildHeader(root);
     buildBanners(root);
@@ -255,7 +255,7 @@ void UpdateDialog::buildHeader(QVBoxLayout *root)
     title->setObjectName(QStringLiteral("updateTitle"));
     texts->addWidget(title);
 
-    auto *subtitle = new QLabel(QStringLiteral("获取最新功能与安全性改进"), this);
+    auto *subtitle = new QLabel(QStringLiteral("检查新版本并安装"), this);
     subtitle->setObjectName(QStringLiteral("updateSubtitle"));
     texts->addWidget(subtitle);
 
@@ -283,14 +283,14 @@ void UpdateDialog::buildBanners(QVBoxLayout *root)
                                 : QStringLiteral("正式版通道");
 
     auto makeBanner = [this](const QString &caption, const QString &value,
-                             const QString &sub, const QString &accent) {
+                             const QString &sub) {
         auto *card = new SquircleCard(this);
         card->setObjectName(QStringLiteral("updateBanner"));
-        card->setRadius(12);
-        card->setFillGradient(QColor(accent), QColor(0x15, 0x1A, 0x24));
+        card->setRadius(8);
+        card->setFill(QColor(0x15, 0x1A, 0x24));
         card->setBorder(QColor(0x26, 0x2C, 0x38));
         auto *layout = new QVBoxLayout(card);
-        layout->setContentsMargins(14, 10, 14, 10);
+        layout->setContentsMargins(14, 11, 14, 11);
         layout->setSpacing(2);
 
         auto *captionLabel = new QLabel(caption, card);
@@ -310,11 +310,10 @@ void UpdateDialog::buildBanners(QVBoxLayout *root)
 
     row->addWidget(makeBanner(QStringLiteral("当前版本"),
                               QStringLiteral("v%1").arg(Cji::versionNumber()),
-                              Cji::versionLabel(), QStringLiteral("#1B2230")),
+                              Cji::versionLabel()),
                    1);
     row->addWidget(makeBanner(QStringLiteral("更新通道"), channel,
-                              QStringLiteral("可在「设置 → 更新」里切换"),
-                              QStringLiteral("#14231F")),
+                              QStringLiteral("可在「设置 → 更新」里切换")),
                    1);
 
     root->addLayout(row);
@@ -324,7 +323,7 @@ void UpdateDialog::buildStatusBar(QVBoxLayout *root)
 {
     auto *bar = new SquircleCard(this);
     bar->setObjectName(QStringLiteral("updateStatusBar"));
-    bar->setRadius(12);
+    bar->setRadius(8);
     bar->setFill(QColor(0x1A, 0x1F, 0x2A));
     bar->setBorder(QColor(0x26, 0x2C, 0x38));
     auto *outer = new QVBoxLayout(bar);
@@ -369,12 +368,12 @@ UpdateDialog::ChannelCard UpdateDialog::buildChannelCard(bool prerelease, QVBoxL
 
     card.card = new SquircleCard(this);
     card.card->setObjectName(QStringLiteral("updateCard"));
-    card.card->setRadius(14);
+    card.card->setRadius(10);
     card.card->setFill(QColor(0x18, 0x1D, 0x27));
     card.card->setBorder(QColor(0x26, 0x2C, 0x38));
     card.card->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     auto *layout = new QVBoxLayout(card.card);
-    layout->setContentsMargins(16, 12, 16, 12);
+    layout->setContentsMargins(16, 14, 16, 14);
     layout->setSpacing(8);
 
     auto *head = new QHBoxLayout();
@@ -524,8 +523,8 @@ void UpdateDialog::startCheck()
 void UpdateDialog::showDemoReleases()
 {
     UpdateRelease stable;
-    stable.version = QStringLiteral("2.1.1");
-    stable.title = QStringLiteral("KOPAL v2.1.1");
+    stable.version = QStringLiteral("2.2.2");
+    stable.title = QStringLiteral("KOPAL v2.2.2");
     stable.date = QStringLiteral("2026-11-20");
     stable.pageUrl = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
     stable.notes = {
@@ -535,11 +534,11 @@ void UpdateDialog::showDemoReleases()
     };
 
     UpdateRelease pre;
-    pre.version = QStringLiteral("2.2.0");
-    pre.title = QStringLiteral("KOPAL v2.2.0");
+    pre.version = QStringLiteral("2.3.0");
+    pre.title = QStringLiteral("KOPAL v2.3.0");
     pre.date = QStringLiteral("2026-11-22");
     pre.prerelease = true;
-    pre.downloadUrl = QStringLiteral("https://example.com/Cjibackup_Setup_2.2.0.exe");
+    pre.downloadUrl = QStringLiteral("https://example.com/Cjibackup_Setup_2.3.0.exe");
     pre.pageUrl = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
     pre.notes = {
         {UpdateNoteKind::Added, QStringLiteral("流程图新增「合并节点」：拖一个节点到另一个节点上就能合并成一层文件夹")},

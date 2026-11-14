@@ -113,14 +113,13 @@ void BackupPage::refreshFromSettings()
 
 QWidget *BackupPage::buildRenameGroup(QWidget *parent)
 {
-    auto *group = new SquircleGroupBox("文件重命名（双击胶囊修改）", parent);
+    auto *group = new SquircleGroupBox("文件重命名", parent);
     m_renameGroup = group;
     auto *layout = new QVBoxLayout(group);
     layout->setSpacing(8);
 
     auto *hint = new QLabel(
-        "三个胶囊拼出文件名：前缀 + 补零序号 + 自定义内容，例如 IMG0001婚礼.jpg；"
-        "序号按目标文件夹分别从 1 开始。",
+        "前缀 + 补零序号 + 自定义内容；序号按目标文件夹分别计数。",
         group);
     hint->setObjectName("hintLabel");
     hint->setWordWrap(true);
@@ -340,8 +339,8 @@ void BackupPage::setupUI()
     scroll->setWidget(content);
 
     auto *layout = new QVBoxLayout(content);
-    layout->setContentsMargins(26, 24, 26, 24);
-    layout->setSpacing(16);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(12);
 
     // 标题
     auto *title = new QLabel("备份", content);
@@ -349,7 +348,7 @@ void BackupPage::setupUI()
     layout->addWidget(title);
 
     // 源文件夹
-    auto *srcGroup = new SquircleGroupBox("源文件夹（相机 DCIM）", content);
+    auto *srcGroup = new SquircleGroupBox("源文件夹", content);
     m_sourceGroup = srcGroup;
     auto *srcOuter = new QVBoxLayout(srcGroup);
     srcOuter->setSpacing(6);
@@ -368,7 +367,7 @@ void BackupPage::setupUI()
     layout->addWidget(srcGroup);
 
     // 目标文件夹
-    auto *dstGroup = new SquircleGroupBox("目标文件夹（本地磁盘）", content);
+    auto *dstGroup = new SquircleGroupBox("目标文件夹", content);
     m_targetGroup = dstGroup;
     auto *dstOuter = new QVBoxLayout(dstGroup);
     dstOuter->setSpacing(6);
@@ -390,15 +389,14 @@ void BackupPage::setupUI()
     connect(m_targetEdit, &QLineEdit::textChanged, this, [this]() { refreshPathInfo(); });
 
     // 分类流程图
-    auto *flowGroup = new SquircleGroupBox("分类流程图（把分类项拖进画布，从左到右决定文件夹层级）", content);
+    auto *flowGroup = new SquircleGroupBox("分类流程图", content);
     m_flowGroup = flowGroup;
     auto *flowLayout = new QVBoxLayout(flowGroup);
     flowLayout->setSpacing(8);
 
     auto *flowHint = new QLabel(
-        "把上方分类项拖进画布（也可双击直接添加），从左到右依次生成多级文件夹；"
-        "把一个节点拖到另一个节点上可以合并成一层文件夹，双击合并节点能改分隔符；"
-        "右键拖动两个节点可以改连线，只有从左到右有效，未连线的分类项不会生成文件夹。",
+        "分类项拖进画布，从左到右生成多级文件夹；拖到节点上可直接合并，双击合并节点改分隔符。"
+        "右键拖动两个节点可以改连线。",
         flowGroup);
     flowHint->setObjectName("hintLabel");
     flowHint->setWordWrap(true);
@@ -463,15 +461,23 @@ void BackupPage::setupUI()
     auto *progLayout = new QVBoxLayout(progGroup);
 
     m_progressBar = new QProgressBar(progGroup);
+    m_progressBar->setObjectName(QStringLiteral("backupProgress"));
     m_progressBar->setRange(0, 100);
     m_progressBar->setValue(0);
-    m_progressBar->setTextVisible(true);
+    m_progressBar->setTextVisible(false);
+    m_progressBar->setFixedHeight(8);
     progLayout->addWidget(m_progressBar);
 
     auto *infoLayout = new QHBoxLayout();
+    m_percentLabel = new QLabel("0%", progGroup);
+    m_percentLabel->setObjectName("statValue");
     m_speedLabel = new QLabel("速度: --", progGroup);
+    m_speedLabel->setObjectName("statValue");
     m_timeLabel = new QLabel("用时: --", progGroup);
+    m_timeLabel->setObjectName("statValue");
     m_fileLabel = new QLabel("文件: 0/0", progGroup);
+    m_fileLabel->setObjectName("statValue");
+    infoLayout->addWidget(m_percentLabel);
     infoLayout->addWidget(m_speedLabel);
     infoLayout->addWidget(m_timeLabel);
     infoLayout->addWidget(m_fileLabel);
@@ -588,6 +594,7 @@ void BackupPage::startBackup()
     saveSettings();
 
     m_progressBar->setValue(0);
+    m_percentLabel->setText(QStringLiteral("0%"));
     m_noticeLabel->clear();
     m_elapsed.start();
     m_startedAt = QDateTime::currentDateTime();
@@ -620,8 +627,11 @@ void BackupPage::stopBackup()
 
 void BackupPage::onProgress(const BackupStats &stats)
 {
-    if (stats.totalBytes > 0)
-        m_progressBar->setValue(int(stats.copiedBytes * 100 / stats.totalBytes));
+    if (stats.totalBytes > 0) {
+        const int percent = int(stats.copiedBytes * 100 / stats.totalBytes);
+        m_progressBar->setValue(percent);
+        m_percentLabel->setText(QString("%1%").arg(percent));
+    }
 
     m_fileLabel->setText(QString("文件: %1/%2").arg(stats.copiedFiles).arg(stats.totalFiles));
     m_speedLabel->setText(QString("速度: %1 MB/s").arg(stats.speedMBps, 0, 'f', 1));

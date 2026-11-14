@@ -261,7 +261,7 @@ void SquircleGroupBox::showEvent(QShowEvent *event)
     QGroupBox::showEvent(event);
     // 标题是自绘的，内容要避开标题那一条
     if (auto *l = layout())
-        l->setContentsMargins(18, 44, 18, 12);
+        l->setContentsMargins(18, 42, 18, 16);
 }
 
 void SquircleGroupBox::paintEvent(QPaintEvent *event)
@@ -286,7 +286,7 @@ void SquircleGroupBox::paintEvent(QPaintEvent *event)
         f.setPixelSize(13);
         painter.setFont(f);
         painter.setPen(QColor(0xC7, 0xCF, 0xDB));
-        painter.drawText(QRect(18, 13, width() - 36, 24),
+        painter.drawText(QRect(18, 14, width() - 36, 20),
                          Qt::AlignLeft | Qt::AlignVCenter, text);
     }
 }

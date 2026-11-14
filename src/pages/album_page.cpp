@@ -723,8 +723,8 @@ AlbumPage::AlbumPage(QWidget *parent)
     : QWidget(parent)
 {
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(26, 20, 26, 18);
-    root->setSpacing(14);
+    root->setContentsMargins(24, 20, 24, 18);
+    root->setSpacing(12);
 
     auto *header = new QHBoxLayout();
     header->setSpacing(10);

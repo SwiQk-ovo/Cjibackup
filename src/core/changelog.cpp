@@ -20,6 +20,23 @@ QVector<Release> buildReleases()
 {
     QVector<Release> list;
 
+    // ---------------- 2.2.1 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("2.2.1");
+        release.date = QStringLiteral("2026-11-14");
+        release.items = {
+            {Kind::Changed, QStringLiteral("全局圆角收紧：卡片 10px、输入/下拉 8px、按钮 7px，界面更利落")},
+            {Kind::Changed, QStringLiteral("字号重新分档：正文 13、页标题 22、说明 12，标题和正文的层级更清楚")},
+            {Kind::Improved, QStringLiteral("流程图去掉点阵背景、节点投影和连线发光，节点边框收细，画布更干净")},
+            {Kind::Improved, QStringLiteral("更新窗口去掉渐变横幅；关于页保持居中版式，作者 / 链接 / 反馈群排得更紧凑")},
+            {Kind::Improved, QStringLiteral("侧栏收窄到 164px，KOPAL 字距拉开；备份进度条改成细条 + 独立百分比")},
+            {Kind::Improved, QStringLiteral("提示浮层图标去掉渐变和 emoji，改成纯色小圆")},
+            {Kind::Improved, QStringLiteral("精简分组标题和说明文案，去掉长括号和重复解释")},
+        };
+        list.append(release);
+    }
+
     // ---------------- 2.1.0 ----------------
     {
         Release release;

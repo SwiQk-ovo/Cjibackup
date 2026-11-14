@@ -40,7 +40,7 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
-    qreal m_radius = 16.0;
+    qreal m_radius = 10.0;
     QColor m_fill = QColor(0x17, 0x18, 0x1B);
     QColor m_fillBottom;   // 有效时用上下渐变
     QColor m_border = QColor(0x2A, 0x2C, 0x30);
@@ -64,7 +64,7 @@ protected:
 
 private:
     void ensureBackdrop();                 // 抓取卡片背后的画面并模糊
-    qreal m_radius = 16.0;
+    qreal m_radius = 10.0;
     QImage m_backdrop;
     QSize m_backdropSize;
 };

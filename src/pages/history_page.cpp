@@ -18,8 +18,8 @@ HistoryPage::HistoryPage(QWidget *parent)
     : QWidget(parent)
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(30, 30, 30, 30);
-    layout->setSpacing(15);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(12);
 
     QHBoxLayout *topBar = new QHBoxLayout();
     QLabel *title = new QLabel("备份历史", this);

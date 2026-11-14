@@ -41,7 +41,7 @@ QString glyphFor(int kind)
     case Toast::Success:  return QStringLiteral("✓");
     case Toast::Warning:  return QStringLiteral("!");
     case Toast::Error:    return QStringLiteral("×");
-    case Toast::Reminder: return QStringLiteral("⏰");
+    case Toast::Reminder: return QStringLiteral("i");
     default:              return QStringLiteral("i");
     }
 }
@@ -55,20 +55,17 @@ QPixmap iconPixmap(int kind, int size)
     painter.setRenderHint(QPainter::Antialiasing, true);
 
     const QRectF circle(1, 1, size - 2, size - 2);
-    QLinearGradient gradient(circle.topLeft(), circle.bottomRight());
-    gradient.setColorAt(0.0, accentFor(kind).lighter(125));
-    gradient.setColorAt(1.0, accentFor(kind));
-
+    const QColor accent = accentFor(kind);
     painter.setPen(Qt::NoPen);
-    painter.setBrush(gradient);
+    painter.setBrush(accent);
     painter.drawEllipse(circle);
 
     QFont font = painter.font();
-    font.setBold(true);
+    font.setWeight(QFont::DemiBold);
     font.setPixelSize(int(size * 0.52));
     font.setFamily(QStringLiteral("Microsoft YaHei UI"));
     painter.setFont(font);
-    painter.setPen(Qt::white);
+    painter.setPen(QColor(255, 255, 255));
     painter.drawText(circle, Qt::AlignCenter, glyphFor(kind));
     painter.end();
     return pixmap;
@@ -94,17 +91,17 @@ Toast::Toast()
     outer->addWidget(m_card);
 
     auto *shadow = new QGraphicsDropShadowEffect(m_card);
-    shadow->setBlurRadius(28);
-    shadow->setColor(QColor(0, 0, 0, 170));
-    shadow->setOffset(0, 6);
+    shadow->setBlurRadius(16);
+    shadow->setColor(QColor(0, 0, 0, 120));
+    shadow->setOffset(0, 3);
     m_card->setGraphicsEffect(shadow);
 
     auto *layout = new QHBoxLayout(m_card);
-    layout->setContentsMargins(16, 14, 14, 14);
+    layout->setContentsMargins(16, 13, 14, 13);
     layout->setSpacing(12);
 
     m_icon = new QLabel(m_card);
-    m_icon->setFixedSize(34, 34);
+    m_icon->setFixedSize(28, 28);
     layout->addWidget(m_icon, 0, Qt::AlignTop);
 
     auto *textBox = new QVBoxLayout();
@@ -143,7 +140,7 @@ Toast::Toast()
 void Toast::applyContent(const QString &title, const QString &text, Kind kind,
                          const QString &actionText, std::function<void()> onAction)
 {
-    m_icon->setPixmap(iconPixmap(kind, 34));
+    m_icon->setPixmap(iconPixmap(kind, 28));
     m_title->setText(title);
     m_text->setText(text);
     m_text->setVisible(!text.isEmpty());

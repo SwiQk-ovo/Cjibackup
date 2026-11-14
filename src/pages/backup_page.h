@@ -114,6 +114,7 @@ private:
     QLabel *m_renamePreview = nullptr;
 
     QProgressBar *m_progressBar = nullptr;
+    QLabel *m_percentLabel = nullptr;
     QLabel *m_speedLabel = nullptr;
     QLabel *m_timeLabel = nullptr;
     QLabel *m_fileLabel = nullptr;

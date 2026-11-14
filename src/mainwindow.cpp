@@ -111,11 +111,11 @@ void MainWindow::setupUI()
     // 侧边栏
     m_sidebar = new QFrame(m_centralWidget);
     m_sidebar->setObjectName("sidebar");
-    m_sidebar->setFixedWidth(180);
+    m_sidebar->setFixedWidth(164);
 
     m_sidebarLayout = new QVBoxLayout(m_sidebar);
-    m_sidebarLayout->setContentsMargins(0, 30, 0, 20);
-    m_sidebarLayout->setSpacing(5);
+    m_sidebarLayout->setContentsMargins(0, 24, 0, 18);
+    m_sidebarLayout->setSpacing(4);
 
     // 内容区
     m_pages = new QStackedWidget(m_centralWidget);
@@ -130,15 +130,23 @@ void MainWindow::setupSidebar()
     // Logo
     m_logoLabel = new QLabel("KOPAL", m_sidebar);
     m_logoLabel->setObjectName("logoLabel");
-    m_logoLabel->setAlignment(Qt::AlignCenter);
-    m_logoLabel->setFixedHeight(50);
+    m_logoLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    m_logoLabel->setContentsMargins(24, 0, 0, 0);
+    m_logoLabel->setFixedHeight(44);
+    {
+        QFont logoFont = m_logoLabel->font();
+        logoFont.setPixelSize(19);
+        logoFont.setWeight(QFont::DemiBold);
+        logoFont.setLetterSpacing(QFont::AbsoluteSpacing, 2.2);
+        m_logoLabel->setFont(logoFont);
+    }
     m_sidebarLayout->addWidget(m_logoLabel);
-    m_sidebarLayout->addSpacing(20);
+    m_sidebarLayout->addSpacing(24);
 
     // 滑块（蓝色小方块）
     m_slider = new QFrame(m_sidebar);
     m_slider->setObjectName("navSlider");
-    m_slider->setFixedSize(6, 28);
+    m_slider->setFixedSize(3, 22);
     m_slider->hide();
 
     // 导航按钮
@@ -147,7 +155,7 @@ void MainWindow::setupSidebar()
         auto *btn = new QPushButton(navItems.at(i), m_sidebar);
         btn->setObjectName("navButton");
         btn->setCheckable(true);
-        btn->setFixedHeight(40);
+        btn->setFixedHeight(38);
         btn->setCursor(Qt::PointingHandCursor);
         btn->setProperty("index", i);
         connect(btn, &QPushButton::clicked, this, [this, i]() { switchPage(i); });
@@ -168,8 +176,8 @@ void MainWindow::setupSidebar()
     m_pages->setGraphicsEffect(m_pageFade);
 
     m_pageFadeAnim = new QPropertyAnimation(m_pageFade, "opacity", this);
-    m_pageFadeAnim->setDuration(150);
-    m_pageFadeAnim->setStartValue(0.55);
+    m_pageFadeAnim->setDuration(120);
+    m_pageFadeAnim->setStartValue(0.75);
     m_pageFadeAnim->setEndValue(1.0);
     m_pageFadeAnim->setEasingCurve(QEasingCurve::OutCubic);
     connect(m_pageFadeAnim, &QPropertyAnimation::finished, this, [this]() {
@@ -572,7 +580,7 @@ void MainWindow::switchPage(int index)
     // 页面切换：只对 stack 整体做一次轻微淡入。
     // 起点 0.55 而不是 0 —— 快速连点时动画被打断也不会把页面留在全透明状态。
     m_pageFadeAnim->stop();
-    m_pageFade->setOpacity(0.55);
+    m_pageFade->setOpacity(0.75);
     m_pageFadeAnim->start();
 }
 
@@ -582,14 +590,14 @@ void MainWindow::updateSliderPosition(int index)
         return;
 
     QPushButton *btn = m_navButtons[index];
-    const int y = btn->mapTo(m_sidebar, QPoint(0, 0)).y() + 6;
+    const int y = btn->mapTo(m_sidebar, QPoint(0, 0)).y() + 8;
 
-    m_slider->move(12, y);
+    m_slider->move(10, y);
     m_slider->show();
     m_slider->raise();   // 盖在导航按钮上方，否则会被按钮背景挡住
 
     const QRect start = m_slider->geometry();
-    const QRect end(12, y, 6, 28);
+    const QRect end(10, y, 3, 22);
     m_sliderAnim->stop();
     m_sliderAnim->setStartValue(start);
     m_sliderAnim->setEndValue(end);

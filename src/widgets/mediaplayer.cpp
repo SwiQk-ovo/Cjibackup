@@ -445,7 +445,7 @@ void MediaPlayerWindow::buildUi()
     m_list->setFixedWidth(240);
     m_list->setStyleSheet(QStringLiteral(
         "QListWidget#playlist{background:#0E0E0F;border:none;outline:none;padding:8px;}"
-        "QListWidget#playlist::item{color:#B9B9BD;padding:8px 10px;border-radius:8px;}"
+        "QListWidget#playlist::item{color:#B9B9BD;padding:8px 10px;border-radius:6px;}"
         "QListWidget#playlist::item:hover{background:#1B1B1D;color:#FFFFFF;}"
         "QListWidget#playlist::item:selected{background:#262628;color:#FFFFFF;}"));
     m_list->hide();
@@ -906,7 +906,7 @@ void MediaPlayerWindow::showContextMenu(const QPoint &globalPos)
 {
     QMenu menu(this);
     menu.setStyleSheet(QStringLiteral(
-        "QMenu{background:#1B1B1D;border:1px solid #2A3040;border-radius:10px;padding:6px;}"
+        "QMenu{background:#1B1B1D;border:1px solid #2A3040;border-radius:8px;padding:6px;}"
         "QMenu::item{color:#FFFFFF;padding:7px 22px;border-radius:6px;font-size:13px;}"
         "QMenu::item:selected{background:#4C8DFF;}"));
 
