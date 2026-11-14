@@ -1,6 +1,7 @@
 // 备份引擎端到端冒烟测试：验证流程图配置 -> 真实目录层级
 #include "core/backupengine.h"
 #include "core/exifscanner.h"
+#include "core/flowpath.h"
 #include "core/settingsmanager.h"
 
 #include <QCoreApplication>
@@ -143,9 +144,9 @@ int main(int argc, char *argv[])
         ++g_failures;
         g_out << "  FAIL 备份未完成\n";
     }
-    expectFile(target + "/2026/10/31/JPG/IMG_0001.JPG");
-    expectFile(target + "/2026/09/01/CR3/IMG_0002.CR3");
-    expectFile(target + "/2026/01/15/MP4/MOV_0001.MP4");
+    expectFile(target + "/2026-10-31/JPG/IMG_0001.JPG");
+    expectFile(target + "/2026-09-01/CR3/IMG_0002.CR3");
+    expectFile(target + "/2026-01-15/MP4/MOV_0001.MP4");
 
     g_out << "[场景二] 年 / 事件 / 月 / 后缀（日志里的例子）\n";
     const QString target2 = root + "/target2";
@@ -213,10 +214,10 @@ int main(int argc, char *argv[])
         ++g_failures;
         g_out << "  FAIL 备份未完成\n";
     }
-    expectFile(target4 + "/2026/10/31/Nikon Z 6II/NEF/IMG0001婚礼.NEF");
-    expectFile(target4 + "/2026/10/31/Nikon Z 6II/NEF/IMG0002婚礼.NEF");
+    expectFile(target4 + "/2026-10-31/Nikon Z 6II/NEF/IMG0001婚礼.NEF");
+    expectFile(target4 + "/2026-10-31/Nikon Z 6II/NEF/IMG0002婚礼.NEF");
     // 视频读不到型号 -> 未知相机1，序号在自己的文件夹里从 1 重新开始
-    expectFile(target4 + "/2026/10/31/未知相机1/MP4/IMG0001婚礼.MP4");
+    expectFile(target4 + "/2026-10-31/未知相机1/MP4/IMG0001婚礼.MP4");
 
     g_out << "[场景五] 同一张卡两台相机：型号各自成文件夹，序号分别从 1 开始\n";
     makeFile(card2 + "/101SONY/D.ARW", when, fakeTiffWithModel("SONY", "SONY A7M4"));
@@ -226,10 +227,24 @@ int main(int argc, char *argv[])
         ++g_failures;
         g_out << "  FAIL 备份未完成\n";
     }
-    expectFile(target5 + "/2026/10/31/Sony A7M4/ARW/IMG0001婚礼.ARW");
-    expectFile(target5 + "/2026/10/31/Nikon Z 6II/NEF/IMG0001婚礼.NEF");
-    expectFile(target5 + "/2026/10/31/Nikon Z 6II/NEF/IMG0002婚礼.NEF");
-    expectFile(target5 + "/2026/10/31/未知相机1/MP4/IMG0001婚礼.MP4");
+    expectFile(target5 + "/2026-10-31/Sony A7M4/ARW/IMG0001婚礼.ARW");
+    expectFile(target5 + "/2026-10-31/Nikon Z 6II/NEF/IMG0001婚礼.NEF");
+    expectFile(target5 + "/2026-10-31/Nikon Z 6II/NEF/IMG0002婚礼.NEF");
+    expectFile(target5 + "/2026-10-31/未知相机1/MP4/IMG0001婚礼.MP4");
+
+    g_out << "[场景六] 合并节点：年 / 月 / 日 合并成一层，用 . 连接\n";
+    const QString target6 = root + "/target6";
+    sm->setFlowConfig({FlowPath::encodeGroup(QStringLiteral("."), {"year", "month", "day"}),
+                       "camera", "ext"});
+    const bool ok6 = runEngine(card2, target6);
+    if (!ok6) {
+        ++g_failures;
+        g_out << "  FAIL 备份未完成\n";
+    }
+    expectFile(target6 + "/2026.10.31/Nikon Z 6II/NEF/IMG0001婚礼.NEF");
+    expectFile(target6 + "/2026.10.31/Nikon Z 6II/NEF/IMG0002婚礼.NEF");
+    expectFile(target6 + "/2026.10.31/未知相机1/MP4/IMG0001婚礼.MP4");
+    sm->setFlowConfig({"year", "month", "day", "ext"});
 
     {
         QDirIterator files(target5, QDir::Files, QDirIterator::Subdirectories);

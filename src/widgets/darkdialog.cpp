@@ -51,7 +51,7 @@ QColor accentFor(int kind)
     case DarkDialog::Warning: return QColor(0xF5, 0x9E, 0x0B);
     case DarkDialog::Error:   return QColor(0xF8, 0x71, 0x71);
     case DarkDialog::Success: return QColor(0x34, 0xD3, 0x99);
-    default:                  return QColor(0x3B, 0x82, 0xF6);
+    default:                  return QColor(0x4C, 0x8D, 0xFF);
     }
 }
 
@@ -139,7 +139,8 @@ DarkDialog::DarkDialog(QWidget *parent, Kind kind, const QString &title, const Q
     buttonRow->setObjectName(QStringLiteral("dialogButtonRow"));
 }
 
-void DarkDialog::addButtons(const QString &okText, const QString &cancelText, bool hasCancel)
+void DarkDialog::addButtons(const QString &okText, const QString &cancelText, bool hasCancel,
+                            bool shiftPrimary)
 {
     auto *row = findChild<QHBoxLayout *>(QStringLiteral("dialogButtonRow"));
     if (!row)
@@ -151,7 +152,9 @@ void DarkDialog::addButtons(const QString &okText, const QString &cancelText, bo
         m_cancelBtn->setCursor(Qt::PointingHandCursor);
         m_cancelBtn->setAutoDefault(false);
         connect(m_cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
-        row->addWidget(m_cancelBtn);
+        // 第二次确认时把「取消」放到右边，确认键自然就换到左边了
+        if (!shiftPrimary)
+            row->addWidget(m_cancelBtn);
     }
 
     m_okBtn = new QPushButton(okText, this);
@@ -160,6 +163,9 @@ void DarkDialog::addButtons(const QString &okText, const QString &cancelText, bo
     m_okBtn->setDefault(true);
     connect(m_okBtn, &QPushButton::clicked, this, &QDialog::accept);
     row->addWidget(m_okBtn);
+
+    if (hasCancel && shiftPrimary)
+        row->addWidget(m_cancelBtn);
 }
 
 bool DarkDialog::question(QWidget *parent, const QString &title, const QString &text,
@@ -190,6 +196,32 @@ void DarkDialog::critical(QWidget *parent, const QString &title, const QString &
     DarkDialog dialog(parent, Error, title, text);
     dialog.addButtons(QStringLiteral("知道了"), QString(), false);
     dialog.exec();
+}
+
+bool DarkDialog::confirmTwice(QWidget *parent, const QString &title, const QString &text,
+                              const QString &okText)
+{
+    // 第一次：常规问询，确认键在右
+    if (!question(parent, title, text, okText, QStringLiteral("取消")))
+        return false;
+
+    // 第二次：确认键挪到左边 + 窗口整体偏移，避免连点第二下又落在确认键上
+    DarkDialog dialog(parent, Warning, QStringLiteral("再确认一次"),
+                      QStringLiteral("请再确认一次：%1\n\n点「%2」之后这个操作会立即执行。")
+                          .arg(text, okText));
+    dialog.addButtons(okText, QStringLiteral("取消"), true, true);
+    dialog.adjustSize();
+
+    if (parent) {
+        QWidget *window = parent->window();
+        const QPoint center = window ? window->frameGeometry().center()
+                                     : parent->mapToGlobal(QPoint(parent->width() / 2,
+                                                                 parent->height() / 2));
+        dialog.move(center.x() - dialog.width() / 2 - 150,
+                    center.y() - dialog.height() / 2 + 90);
+    }
+
+    return dialog.exec() == QDialog::Accepted;
 }
 
 

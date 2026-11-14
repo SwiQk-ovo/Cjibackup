@@ -7,6 +7,7 @@
 #include "core/winutils.h"
 #include "core/version.h"
 #include "pages/about_page.h"
+#include "pages/album_page.h"
 #include "pages/backup_page.h"
 #include "pages/events_page.h"
 #include "pages/history_page.h"
@@ -23,6 +24,9 @@
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QPainter>
+#include <QRadialGradient>
+#include <QSettings>
 #include <QFile>
 #include <QMenu>
 #include <QScrollArea>
@@ -46,6 +50,27 @@ MainWindow::MainWindow(QWidget *parent)
     setupReminder();
     setupUpdater();
 
+    // 恢复上次的窗口位置；越界/超出屏幕的几何直接丢弃，改为最大化
+    {
+        QSettings settings;
+        const QByteArray saved = settings.value(QStringLiteral("ui/geometry")).toByteArray();
+        if (!saved.isEmpty() && restoreGeometry(saved)) {
+            const QRect avail = screen() ? screen()->availableGeometry()
+                                         : QRect(0, 0, 1280, 800);
+            const QRect frame = frameGeometry();
+            const bool offScreen = !avail.intersects(frame);
+            const bool tooBig = frame.width() > avail.width() || frame.height() > avail.height();
+            if (offScreen || tooBig) {
+                resize(qMin(avail.width(), 1280), qMin(avail.height(), 800));
+                move(avail.topLeft());
+            } else {
+                m_hasSavedGeometry = true;
+                if (settings.value(QStringLiteral("ui/maximized"), false).toBool())
+                    setWindowState(windowState() | Qt::WindowMaximized);
+            }
+        }
+    }
+
 
     // 初始化滑块位置
     QTimer::singleShot(50, this, [this]() { updateSliderPosition(0); });
@@ -53,11 +78,31 @@ MainWindow::MainWindow(QWidget *parent)
     WinUtils::applyDarkTitleBar(this);
 }
 
+// 背景光斑：让上面的半透明卡片看起来像玻璃（蓝，唯一彩色）
+// 背景：蓝板岩渐变 + 三团大柔光（不是纯黑，避免"黑里发白"）
+void MainWindow::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event)
+    QPainter p(this);
+    p.fillRect(rect(), QColor(0x0E, 0x0E, 0x0F));
+}
 void MainWindow::setupUI()
 {
     m_centralWidget = new QWidget(this);
     m_centralWidget->setObjectName("centralWidget");
     setCentralWidget(m_centralWidget);
+
+    // 兜底：窗口底色和内容底色一致，DPI/最大化时不会露出黑边
+    {
+        QPalette pal = palette();
+        pal.setColor(QPalette::Window, QColor(0x0E, 0x0F, 0x11));
+        setPalette(pal);
+        setAutoFillBackground(true);
+        m_centralWidget->setAutoFillBackground(true);
+        m_centralWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        // 只给这个控件本身设背景；不带选择器会把背景传给所有子控件（输入框会变黑块）
+        m_centralWidget->setStyleSheet(QStringLiteral("QWidget#centralWidget { background: #111112; }"));
+    }
 
     m_mainLayout = new QHBoxLayout(m_centralWidget);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -97,7 +142,7 @@ void MainWindow::setupSidebar()
     m_slider->hide();
 
     // 导航按钮
-    const QStringList navItems = {"备份", "历史", "事件", "设置", "关于"};
+    const QStringList navItems = {"备份", "素材", "历史", "事件", "设置", "关于"};
     for (int i = 0; i < navItems.size(); ++i) {
         auto *btn = new QPushButton(navItems.at(i), m_sidebar);
         btn->setObjectName("navButton");
@@ -138,6 +183,8 @@ void MainWindow::setupPages()
 {
     m_backupPage = new BackupPage(this);
     m_pages->addWidget(m_backupPage);
+    m_albumPage = new AlbumPage(this);
+    m_pages->addWidget(m_albumPage);
     m_historyPage = new HistoryPage(this);
     m_pages->addWidget(m_historyPage);
     m_eventsPage = new EventsPage(this);
@@ -449,7 +496,7 @@ void MainWindow::startGuide()
                   QStringLiteral("把上面的分类项拖进画布，从左到右就是文件夹层级。\n"
                                  "例如 「年 → 月 → 日 → 相机型号 → 后缀」会生成 2026/10/31/Nikon Z 6II/JPG。\n"
                                  "右键从一个节点拖到右边的节点可以改连线，画布下面实时预览目录。"),
-                  [this]() { return m_backupPage->flowWidget(); },
+                  [this]() { return m_backupPage->flowGroupWidget(); },
                   [this]() { switchPage(0); }});
 
     steps.append({QStringLiteral("④ 文件名规则"),
@@ -468,26 +515,34 @@ void MainWindow::startGuide()
     steps.append({QStringLiteral("⑥ 历史记录"),
                   QStringLiteral("每次备份的时间、文件数、大小、平均速度都记在这里，\n"
                                  "右上角「导出 CSV」可以直接用 Excel 打开。"),
-                  [this, pageTitle]() { return pageTitle(m_historyPage); },
-                  [this]() { switchPage(1); }});
+                  [this, pageTitle]() {
+                      if (auto *card = m_historyPage->findChild<QWidget *>(QStringLiteral("historyCard")))
+                          return card;
+                      return pageTitle(m_historyPage);
+                  },
+                  [this]() { switchPage(2); }});
 
     steps.append({QStringLiteral("⑦ 常用事件"),
                   QStringLiteral("把常拍的类型（婚礼、校运会……）存成事件。\n"
                                  "画流程图选「事件」节点时直接从这里挑，不用每次手打。"),
-                  [this, pageTitle]() { return pageTitle(m_eventsPage); },
-                  [this]() { switchPage(2); }});
+                  [this, pageTitle]() {
+                      if (auto *card = m_eventsPage->findChild<QWidget *>(QStringLiteral("eventsCard")))
+                          return card;
+                      return pageTitle(m_eventsPage);
+                  },
+                  [this]() { switchPage(3); }});
 
     steps.append({QStringLiteral("⑧ 设置"),
                   QStringLiteral("退出行为、线程数、校验开关、启动动画、定时提醒、自动更新，都在这一页。\n"
                                  "改完立即生效，不用重启。"),
                   [this, pageTitle]() { return pageTitle(m_settingsPage); },
-                  [this]() { switchPage(3); }});
+                  [this]() { switchPage(4); }});
 
     steps.append({QStringLiteral("⑨ 关于页"),
                   QStringLiteral("版本号、作者、B 站 / GitHub 链接、数据目录都在这一页。\n"
                                  "想再看一遍这段引导，点「使用引导」就行。"),
                   [this]() { return m_aboutPage->guideButtonWidget(); },
-                  [this]() { switchPage(4); }});
+                  [this]() { switchPage(5); }});
 
     switchPage(0);
     m_guide->start(steps);
@@ -497,13 +552,15 @@ void MainWindow::startGuide()
 void MainWindow::showFromTray()
 {
     showNormal();
+    if (!m_hasSavedGeometry && !isMaximized())
+        showMaximized();
     raise();
     activateWindow();
 }
 
 void MainWindow::switchPage(int index)
 {
-    if (index < 0 || index >= 5 || index == m_currentIndex)
+    if (index < 0 || index >= 6 || index == m_currentIndex)
         return;
 
     m_navButtons[m_currentIndex]->setChecked(false);
@@ -521,7 +578,7 @@ void MainWindow::switchPage(int index)
 
 void MainWindow::updateSliderPosition(int index)
 {
-    if (index < 0 || index >= 5 || !m_navButtons[index])
+    if (index < 0 || index >= 6 || !m_navButtons[index])
         return;
 
     QPushButton *btn = m_navButtons[index];
@@ -549,6 +606,11 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    {
+        QSettings settings;
+        settings.setValue(QStringLiteral("ui/geometry"), saveGeometry());
+        settings.setValue(QStringLiteral("ui/maximized"), isMaximized());
+    }
     if (m_forceQuit) {
         event->accept();
         return;

@@ -25,7 +25,7 @@
 namespace {
 
 const QColor kTitle(0xFF, 0xFF, 0xFF);
-const QColor kDim(0x7C, 0x86, 0x98);
+const QColor kDim(0x6E, 0x74, 0x7C);
 const QColor kHoverBg(0x1E, 0x24, 0x31);
 
 void applyDarkTitleBar(QWidget *window)
@@ -50,7 +50,7 @@ QColor kindColor(Changelog::Kind kind)
     case Changelog::Kind::Improved: return QColor(0xC0, 0x84, 0xFC);
     case Changelog::Kind::Changed:  return QColor(0xFB, 0xBF, 0x24);
     }
-    return QColor(0x94, 0x9B, 0xA8);
+    return QColor(0x9A, 0xA0, 0xA8);
 }
 
 QString pillStyle(Changelog::Kind kind)
@@ -175,7 +175,7 @@ protected:
 
         if (!m_trailing.isEmpty()) {
             QFont trailingFont = font();
-            trailingFont.setPixelSize(11);
+            trailingFont.setPixelSize(12);
             painter.setFont(trailingFont);
             painter.setPen(kDim);
             painter.drawText(QRect(left, 0, width() - left - right, height()),

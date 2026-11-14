@@ -41,6 +41,16 @@ static void checkTrue(const QString &label, bool value)
     }
 }
 
+static void checkKind(const QString &label, UpdateNoteKind actual, UpdateNoteKind expected)
+{
+    if (actual == expected) {
+        g_out << "  OK   " << label << "\n";
+    } else {
+        ++g_failures;
+        g_out << "  FAIL " << label << "（分类不对）\n";
+    }
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -59,6 +69,32 @@ int main(int argc, char *argv[])
     checkInt("1.0 vs 1.0.0", UpdateManager::compareVersions("1.0", "1.0.0"), 0);
     checkInt("测试 v1.2.3 vs 正式 v1.2.2",
              UpdateManager::compareVersions("测试 v1.2.3", "正式 v1.2.2"), 1);
+
+    g_out << "[更新说明分类]\n";
+    {
+        const QVector<UpdateNote> notes = UpdateManager::parseReleaseNotes(QStringLiteral(
+            "## 新增\n"
+            "- 拖节点到节点上合并\n"
+            "- 合并时选分隔符\n"
+            "## 调整\n"
+            "- 设置页重新归类\n"
+            "## 修复\n"
+            "- 切换分隔符后预览没变\n"
+            "- 新增：这一条前缀应该覆盖所在小节\n"
+            "\n"
+            "**Full Changelog**: https://github.com/SwiQk-ovo/Cjibackup/compare/v2.0.2...v2.0.3\n"));
+
+        checkInt("更新说明条数", notes.size(), 5);
+        if (notes.size() == 5) {
+            checkStr("新增小节第一条", notes.at(0).text, "拖节点到节点上合并");
+            checkKind("新增小节第一条分类", notes.at(0).kind, UpdateNoteKind::Added);
+            checkKind("新增小节第二条分类", notes.at(1).kind, UpdateNoteKind::Added);
+            checkKind("调整小节分类", notes.at(2).kind, UpdateNoteKind::Changed);
+            checkKind("修复小节分类", notes.at(3).kind, UpdateNoteKind::Fixed);
+            checkStr("行内前缀去掉", notes.at(4).text, "这一条前缀应该覆盖所在小节");
+            checkKind("行内前缀覆盖小节", notes.at(4).kind, UpdateNoteKind::Added);
+        }
+    }
 
     g_out << "[定时提醒]\n";
     SettingsManager *sm = SettingsManager::instance();

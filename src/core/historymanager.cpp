@@ -42,6 +42,13 @@ void HistoryManager::clearAll()
     emit recordsChanged();
 }
 
+void HistoryManager::setRecords(const QVector<HistoryRecord> &records)
+{
+    m_records = records;
+    save();
+    emit recordsChanged();
+}
+
 void HistoryManager::load()
 {
     QFile f(m_filePath);

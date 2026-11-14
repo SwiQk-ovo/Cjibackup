@@ -13,6 +13,7 @@ class QGraphicsOpacityEffect;
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
+class AlbumPage;
 class BackupPage;
 class SettingsPage;
 class HistoryPage;
@@ -41,6 +42,7 @@ public:
 protected:
     void resizeEvent(QResizeEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
 
 private slots:
     void switchPage(int index);
@@ -67,7 +69,7 @@ private:
     QFrame *m_sidebar = nullptr;
     QVBoxLayout *m_sidebarLayout = nullptr;
     QStackedWidget *m_pages = nullptr;
-    QPushButton *m_navButtons[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
+    QPushButton *m_navButtons[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
     QLabel *m_logoLabel = nullptr;
     QFrame *m_slider = nullptr;
     QGraphicsOpacityEffect *m_pageFade = nullptr;
@@ -76,6 +78,7 @@ private:
     int m_currentIndex = 0;
 
     BackupPage *m_backupPage = nullptr;
+    AlbumPage *m_albumPage = nullptr;
     SettingsPage *m_settingsPage = nullptr;
     HistoryPage *m_historyPage = nullptr;
     EventsPage *m_eventsPage = nullptr;
@@ -95,6 +98,7 @@ private:
     bool m_manualUpdateCheck = false;
     bool m_trayHintShown = false;
     bool m_forceQuit = false;
+    bool m_hasSavedGeometry = false;   // 有没有恢复过上次的窗口几何
 };
 
 #endif // MAINWINDOW_H

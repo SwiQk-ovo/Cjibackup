@@ -1,11 +1,14 @@
 #include "widgets/squircle.h"
 #include "events_page.h"
 #include "core/settingsmanager.h"
+#include "widgets/darkdialog.h"
+#include "widgets/toast.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QGridLayout>
 #include <QLabel>
+#include <QPointer>
 #include "widgets/appicons.h"
 
 EventsPage::EventsPage(QWidget *parent)
@@ -44,16 +47,14 @@ EventsPage::EventsPage(QWidget *parent)
 
     // 列表 + 空状态叠在一起，没内容时显示提示而不是一片空白
     auto *listWrap = new QWidget(this);
+    listWrap->setObjectName(QStringLiteral("eventsCard"));
     auto *listGrid = new QGridLayout(listWrap);
     listGrid->setContentsMargins(0, 0, 0, 0);
 
     m_list = new QListWidget(listWrap);
     m_list->setObjectName("eventsList");
     m_list->setIconSize(QSize(18, 18));
-    for (const QString &name : SettingsManager::instance()->events()) {
-        auto *item = new QListWidgetItem(AppIcons::icon(AppIcons::Glyph::Tag, 18), name, m_list);
-        item->setSizeHint(QSize(0, 38));
-    }
+    refreshFromSettings();
     listGrid->addWidget(m_list, 0, 0);
 
     m_empty = new QLabel("还没有事件\n把常拍的类型（婚礼、校运会……）加进来，画流程图选「事件」时就能直接挑",
@@ -80,6 +81,22 @@ EventsPage::EventsPage(QWidget *parent)
         m_delBtn->setEnabled(m_list->currentItem() != nullptr);
     });
 
+    updateEmptyState();
+}
+
+void EventsPage::refreshFromSettings()
+{
+    if (!m_list)
+        return;
+
+    const QString current = m_list->currentItem() ? m_list->currentItem()->text() : QString();
+    m_list->clear();
+    for (const QString &name : SettingsManager::instance()->events()) {
+        auto *item = new QListWidgetItem(AppIcons::icon(AppIcons::Glyph::Tag, 18), name, m_list);
+        item->setSizeHint(QSize(0, 38));
+        if (name == current)
+            m_list->setCurrentItem(item);
+    }
     updateEmptyState();
 }
 
@@ -110,6 +127,7 @@ void EventsPage::addEvent()
 
     m_input->clear();
     m_list->setCurrentRow(m_list->count() - 1);
+    updateEmptyState();
 }
 
 void EventsPage::removeEvent()
@@ -118,6 +136,24 @@ void EventsPage::removeEvent()
     if (!item)
         return;
 
-    SettingsManager::instance()->removeEvent(item->text());
-    delete m_list->takeItem(m_list->row(item));
+    const QString name = item->text();
+    const QStringList snapshot = SettingsManager::instance()->events();
+
+    if (!DarkDialog::confirmTwice(this, QStringLiteral("删除事件"),
+                                  QStringLiteral("确定要删除事件「%1」吗？").arg(name),
+                                  QStringLiteral("删除"))) {
+        return;
+    }
+
+    SettingsManager::instance()->removeEvent(name);
+    refreshFromSettings();
+
+    QPointer<EventsPage> guard(this);
+    Toast::showToast(QStringLiteral("已删除事件"), name, Toast::Success, 10000,
+                     QStringLiteral("撤销"), [guard, snapshot]() {
+                         if (!guard)
+                             return;
+                         SettingsManager::instance()->setEvents(snapshot);
+                         guard->refreshFromSettings();
+                     });
 }

@@ -20,6 +20,87 @@ QVector<Release> buildReleases()
 {
     QVector<Release> list;
 
+    // ---------------- 2.1.0 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("2.1.0");
+        release.date = QStringLiteral("2026-11-14");
+        release.items = {
+            {Kind::Added, QStringLiteral("更新安装包时可以看见下载进度条，不再只有一行百分比文字")},
+            {Kind::Added, QStringLiteral("分类项可以直接从上方面板拖到某个节点上，松手就合并进去，不用先放到画布再拖第二次")},
+            {Kind::Added, QStringLiteral("删除节点 / 清空画布 / 断开全部连线 / 清空备份记录 / 删除事件之后，右下角提示里能直接「撤销」")},
+            {Kind::Changed, QStringLiteral("所有危险操作改成两次确认：第二次的确认按钮换到另一边、窗口也错开，手快连点不会误确认")},
+            {Kind::Improved, QStringLiteral("拖分类项经过节点时，节点会整体高亮并提示「松手合并进这个节点」")},
+            {Kind::Fixed, QStringLiteral("事件页添加 / 删除事件后，顶部的数量和空状态没有立即刷新")},
+            {Kind::Fixed, QStringLiteral("下载安装包时只有一个百分比文字，看不出整体还要多久")},
+            {Kind::Fixed, QStringLiteral("单文件安装包 / 便携版漏了 Qt6MultimediaWidgets 等运行库，在没装 Qt 的干净电脑上可能打不开")},
+        };
+        list.append(release);
+    }
+
+    // ---------------- 2.0.3 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("2.0.3");
+        release.date = QStringLiteral("2026-11-14");
+        release.items = {
+            {Kind::Added, QStringLiteral("流程图支持合并节点：把一个分类项拖到另一个分类项上，两个节点就合并成一层文件夹")},
+            {Kind::Added, QStringLiteral("合并时弹窗选分隔符（. - _ 空格 自定义），选过的会记住，下次直接选中")},
+            {Kind::Added, QStringLiteral("双击合并节点可以随时改分隔符；右键还能「拆开合并节点」回到两个独立节点")},
+            {Kind::Added, QStringLiteral("合并节点里的事件 / 自定义内容也能右键重命名")},
+            {Kind::Changed, QStringLiteral("更新窗口只显示当前通道；正式版和预发布版都有更新时，两张卡各占一半、各自滚动")},
+            {Kind::Changed, QStringLiteral("更新说明按「新增 / 调整 / 修复」分组，每组逐条列点，不再堆成一大段")},
+            {Kind::Changed, QStringLiteral("设置页重新归类：常规 / 性能 / 备份校验 / 启动动画与音效 / 提醒 / 更新，每组开头有一句说明")},
+            {Kind::Improved, QStringLiteral("备份完成提示从「常规」挪到「提醒」，和定时提醒放在一起")},
+            {Kind::Improved, QStringLiteral("自动识别 GitHub Release 里的分节标题和「新增：」这类前缀，更新说明归类更准")},
+            {Kind::Fixed, QStringLiteral("切换日期分隔符后，流程图下面的目录预览没有跟着变")},
+        };
+        list.append(release);
+    }
+
+    // ---------------- 2.0.2 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("2.0.2");
+        release.date = QStringLiteral("2026-11-14");
+        release.items = {
+            {Kind::Added, QStringLiteral("备份页新增「日期分隔符」：合并后的日期文件夹可以用 - . _ 或空格连接，选择会记住")},
+            {Kind::Improved, QStringLiteral("切换分隔符后目录预览立刻跟着变，不用重新拖节点")},
+        };
+        list.append(release);
+    }
+
+    // ---------------- 2.0.1 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("2.0.1");
+        release.date = QStringLiteral("2026-11-13");
+        release.items = {
+            {Kind::Changed, QStringLiteral("年 / 月 / 日 不再生成三层文件夹，连续拖在一起就合并成一个日期文件夹，顺序完全按拖放先后")},
+            {Kind::Improved, QStringLiteral("年份、相机型号、后缀这些分类项照旧各占一层，目录层级更浅、更好找")},
+        };
+        list.append(release);
+    }
+
+    // ---------------- 2.0.0 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("2.0.0");
+        release.date = QStringLiteral("2026-11-14");
+        release.items = {
+            {Kind::Changed, QStringLiteral("界面换成深色平面风格：去掉毛玻璃与阴影堆叠，统一 16px 卡片圆角，设置项改为「左标题 / 右控件」")},
+            {Kind::Added, QStringLiteral("播放器新增播放列表：自动收集同文件夹里的视频，点一下就能切换")},
+            {Kind::Fixed, QStringLiteral("播放视频时鼠标在画面上移动唤不出控制条")},
+            {Kind::Fixed, QStringLiteral("补拷后计数越界（出现「文件 61/60」）")},
+            {Kind::Added, QStringLiteral("启动时自动检测 CPU / 内存 / 显卡，静默套用性能档位；运行时再按真实帧耗时二次降级")},
+            {Kind::Improved, QStringLiteral("视频缩略图探测复用播放器、丢弃过期任务，素材页加载明显加快")},
+            {Kind::Improved, QStringLiteral("播放改用硬件渲染路径，不再逐帧把画面转成图片")},
+            {Kind::Fixed, QStringLiteral("素材页占位图误显示 DIR，现在显示真实后缀")},
+            {Kind::Added, QStringLiteral("快速启动勾上后，启动动画相关选项自动置灰")},
+        };
+        list.append(release);
+    }
+
     // ---------------- 1.1.5 ----------------
     {
         Release release;
@@ -157,10 +238,12 @@ QVector<Release> buildReleases()
 QStringList buildTodo()
 {
     return {
+        QStringLiteral("合并节点里的单个分类项还不能单独拖出去，目前只能整组「拆开合并节点」"),
+        QStringLiteral("设置里切换更新通道后，已经打开的更新窗口还不会立刻换栏"),
+        QStringLiteral("流程图拖拽排序的动效细节、托盘右键「暂停提醒」还在待办里"),
         QStringLiteral("自定义启动动画除了 GIF，也支持 MP4 / MOV / WebM 视频（走 Qt 多媒体模块，需要系统带 H.264 解码器）"),
         QStringLiteral("安装包约 41 MB：引导程序为了不依赖 Qt 运行时，自带了一份运行库"),
         QStringLiteral("多线程对老机械硬盘不一定更快，可以在设置页把线程数设成 1"),
-        QStringLiteral("流程图拖拽排序的动效细节、托盘右键「暂停提醒」还在待办里"),
     };
 }
 

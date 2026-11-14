@@ -12,6 +12,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -147,6 +148,26 @@ QString versionText(const QString &version)
     return version.isEmpty() ? QStringLiteral("—") : QStringLiteral("v") + version;
 }
 
+QString noteKindName(UpdateNoteKind kind)
+{
+    switch (kind) {
+    case UpdateNoteKind::Added:   return QStringLiteral("新增");
+    case UpdateNoteKind::Fixed:   return QStringLiteral("修复");
+    case UpdateNoteKind::Changed: return QStringLiteral("调整");
+    }
+    return QStringLiteral("调整");
+}
+
+QString noteKindProperty(UpdateNoteKind kind)
+{
+    switch (kind) {
+    case UpdateNoteKind::Added:   return QStringLiteral("added");
+    case UpdateNoteKind::Fixed:   return QStringLiteral("fixed");
+    case UpdateNoteKind::Changed: return QStringLiteral("changed");
+    }
+    return QStringLiteral("changed");
+}
+
 } // namespace
 
 /* ------------------------------------------------------------------ */
@@ -172,16 +193,20 @@ UpdateDialog::UpdateDialog(UpdateManager *manager, QWidget *parent)
                 &UpdateDialog::applyFailure);
         connect(m_manager, &UpdateManager::progress, this,
                 [this](qint64 received, qint64 total) {
-                    if (total <= 0)
-                        return;
-                    setStatus(QStringLiteral("正在下载安装包… %1%")
-                                  .arg(int(received * 100 / total)),
-                              1);
+                    setDownloadProgress(received, total);
                 });
         connect(m_manager, &UpdateManager::installerLaunched, this, [this]() {
+            hideDownloadProgress();
             setStatus(QStringLiteral("安装包已启动，按提示完成安装即可。"), 2);
         });
         connect(m_manager, &UpdateManager::failed, this, [this](const QString &error) {
+            hideDownloadProgress();
+            for (ChannelCard *card : {&m_stable, &m_prerelease}) {
+                if (card->hasRelease && !card->release.downloadUrl.isEmpty()) {
+                    card->action->setEnabled(true);
+                    card->action->setText(QStringLiteral("立即升级"));
+                }
+            }
             setStatus(error, 3);
         });
     }
@@ -196,7 +221,7 @@ void UpdateDialog::buildUi()
     auto *shell = new SquircleCard(this);
     shell->setRadius(16);
     shell->setFill(QColor(0x14, 0x18, 0x21));
-    shell->setBorder(QColor(0x2A, 0x2F, 0x3A));
+    shell->setBorder(QColor(0x2A, 0x2C, 0x30));
     shell->setObjectName(QStringLiteral("updateShell"));
     outer->addWidget(shell);
 
@@ -208,8 +233,10 @@ void UpdateDialog::buildUi()
     buildBanners(root);
     buildStatusBar(root);
 
+    m_root = root;
     m_stable = buildChannelCard(false, root);
     m_prerelease = buildChannelCard(true, root);
+    syncChannelLayout();
 
     buildFooter(root);
 }
@@ -300,8 +327,12 @@ void UpdateDialog::buildStatusBar(QVBoxLayout *root)
     bar->setRadius(12);
     bar->setFill(QColor(0x1A, 0x1F, 0x2A));
     bar->setBorder(QColor(0x26, 0x2C, 0x38));
-    auto *layout = new QHBoxLayout(bar);
-    layout->setContentsMargins(16, 10, 16, 10);
+    auto *outer = new QVBoxLayout(bar);
+    outer->setContentsMargins(16, 10, 16, 10);
+    outer->setSpacing(8);
+
+    auto *layout = new QHBoxLayout();
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(10);
 
     auto *bell = new BellGlyph(bar);
@@ -316,6 +347,18 @@ void UpdateDialog::buildStatusBar(QVBoxLayout *root)
     m_statusChip = new QLabel(QStringLiteral("当前: v%1").arg(Cji::versionNumber()), bar);
     m_statusChip->setObjectName(QStringLiteral("updateChip"));
     layout->addWidget(m_statusChip);
+
+    outer->addLayout(layout);
+
+    // 下载安装包时的进度条：平时整条隐藏，点「立即升级」才出现
+    m_progress = new QProgressBar(bar);
+    m_progress->setObjectName(QStringLiteral("updateProgress"));
+    m_progress->setRange(0, 100);
+    m_progress->setValue(0);
+    m_progress->setTextVisible(false);
+    m_progress->setFixedHeight(8);
+    m_progress->hide();
+    outer->addWidget(m_progress);
 
     root->addWidget(bar);
 }
@@ -371,7 +414,7 @@ UpdateDialog::ChannelCard UpdateDialog::buildChannelCard(bool prerelease, QVBoxL
     card.scroll->setWidgetResizable(true);
     card.scroll->setFrameShape(QFrame::NoFrame);
     card.scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    card.scroll->setMinimumHeight(prerelease ? 132 : 84);
+    card.scroll->setMinimumHeight(110);
 
     card.notesHost = new QWidget(card.scroll);
     card.notesHost->setObjectName(QStringLiteral("updateNotesBody"));
@@ -386,7 +429,7 @@ UpdateDialog::ChannelCard UpdateDialog::buildChannelCard(bool prerelease, QVBoxL
         installFrom(prerelease ? m_prerelease : m_stable);
     });
 
-    root->addWidget(card.card, prerelease ? 2 : 1);
+    root->addWidget(card.card, 1);
     return card;
 }
 
@@ -406,9 +449,13 @@ void UpdateDialog::buildFooter(QVBoxLayout *root)
     m_pageBtn->setCursor(Qt::PointingHandCursor);
     m_pageBtn->setEnabled(false);
     connect(m_pageBtn, &QPushButton::clicked, this, [this]() {
-        const QString url = !m_prerelease.release.pageUrl.isEmpty()
-                                ? m_prerelease.release.pageUrl
-                                : m_stable.release.pageUrl;
+        const bool testChannel = SettingsManager::instance()->updateChannel()
+                                 == QStringLiteral("test");
+        const ChannelCard &selected = testChannel ? m_prerelease : m_stable;
+        const ChannelCard &fallback = testChannel ? m_stable : m_prerelease;
+        QString url = selected.release.pageUrl;
+        if (url.isEmpty())
+            url = fallback.release.pageUrl;
         if (!url.isEmpty())
             QDesktopServices::openUrl(QUrl(url));
     });
@@ -453,6 +500,7 @@ void UpdateDialog::startCheck()
     }
 
     setStatus(QStringLiteral("正在检查更新…"), 0);
+    hideDownloadProgress();
     for (ChannelCard *card : {&m_stable, &m_prerelease}) {
         card->state->setText(QStringLiteral("正在检查…"));
         card->state->show();
@@ -460,6 +508,7 @@ void UpdateDialog::startCheck()
         card->hasRelease = false;
         card->release = UpdateRelease();
     }
+    syncChannelLayout();
 
     if (m_refreshBtn)
         m_refreshBtn->setEnabled(false);
@@ -475,33 +524,38 @@ void UpdateDialog::startCheck()
 void UpdateDialog::showDemoReleases()
 {
     UpdateRelease stable;
-    stable.version = QStringLiteral("1.0.7");
-    stable.title = QStringLiteral("KOPAL v1.0.7");
-    stable.date = QStringLiteral("2026-10-31");
+    stable.version = QStringLiteral("2.1.1");
+    stable.title = QStringLiteral("KOPAL v2.1.1");
+    stable.date = QStringLiteral("2026-11-20");
     stable.pageUrl = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
     stable.notes = {
-        QStringLiteral("启动动画扩充到 13 套，其中 3 套是真 3D"),
-        QStringLiteral("所有消息框改成自绘暗色对话框"),
-        QStringLiteral("历史记录支持导出 CSV，Excel 打开中文不乱码"),
+        {UpdateNoteKind::Added, QStringLiteral("素材页支持按拍摄日期筛选，找某一天的照片不用再翻半天")},
+        {UpdateNoteKind::Changed, QStringLiteral("备份校验的进度条改成按文件数推进，看着更准")},
+        {UpdateNoteKind::Fixed, QStringLiteral("切换页面时偶发内容空白")},
     };
 
     UpdateRelease pre;
-    pre.version = QStringLiteral("1.2.0");
-    pre.title = QStringLiteral("KOPAL v1.2.0");
-    pre.date = QStringLiteral("2026-11-08");
+    pre.version = QStringLiteral("2.2.0");
+    pre.title = QStringLiteral("KOPAL v2.2.0");
+    pre.date = QStringLiteral("2026-11-22");
     pre.prerelease = true;
-    pre.downloadUrl = QStringLiteral("https://example.com/Cjibackup_Setup_1.2.0.exe");
+    pre.downloadUrl = QStringLiteral("https://example.com/Cjibackup_Setup_2.2.0.exe");
     pre.pageUrl = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
     pre.notes = {
-        QStringLiteral("流程图新增「相机型号」节点，按型号自动分文件夹"),
-        QStringLiteral("备份页新增「文件重命名」胶囊区，双击即可修改"),
-        QStringLiteral("自动识别相机 EXIF 型号：NIKON Z 6_2 显示成 Nikon Z 6II"),
-        QStringLiteral("读不到型号的视频、截图归到「未知相机1」"),
-        QStringLiteral("备份先算好每个文件的目标路径再拷贝，多线程下序号稳定"),
-        QStringLiteral("只在使用「相机型号」节点时才读 EXIF，普通备份不变慢"),
-        QStringLiteral("设置页「重命名格式」合并到备份页"),
-        QStringLiteral("单文件安装包里可能装不到主程序的问题"),
+        {UpdateNoteKind::Added, QStringLiteral("流程图新增「合并节点」：拖一个节点到另一个节点上就能合并成一层文件夹")},
+        {UpdateNoteKind::Added, QStringLiteral("合并节点支持双击改分隔符，. - _ 空格 自定义都能选")},
+        {UpdateNoteKind::Changed, QStringLiteral("更新窗口按新增 / 调整 / 修复分组列点，正式和预发布都有更新时各占一半")},
+        {UpdateNoteKind::Changed, QStringLiteral("设置页重新归类成常规 / 性能 / 备份校验 / 启动动画与音效 / 提醒 / 更新")},
+        {UpdateNoteKind::Fixed, QStringLiteral("合并日期节点后目录预览没有跟着变")},
+        {UpdateNoteKind::Fixed, QStringLiteral("补拷后文件计数偶尔越界")},
     };
+
+    // 截图工具用：只让正式版有更新，检查"只显示对应通道"的版式
+    if (qEnvironmentVariableIsSet("CJI_UPDATE_DEMO_SINGLE")) {
+        pre.version = Cji::versionNumber();
+        pre.title = QStringLiteral("KOPAL v%1").arg(pre.version);
+        pre.downloadUrl.clear();
+    }
 
     applyReleases({pre, stable});
 }
@@ -510,30 +564,33 @@ void UpdateDialog::applyReleases(const QVector<UpdateRelease> &releases)
 {
     if (m_refreshBtn)
         m_refreshBtn->setEnabled(true);
+    hideDownloadProgress();
 
     fillChannel(m_stable, false, releases);
     fillChannel(m_prerelease, true, releases);
+    syncChannelLayout();
 
     const bool hasPage = !m_stable.release.pageUrl.isEmpty() || !m_prerelease.release.pageUrl.isEmpty();
     if (m_pageBtn)
         m_pageBtn->setEnabled(hasPage);
 
+    // 只看当前通道：另一个通道的更新只有在"双通道都有更新"时才会显示出来
+    const bool testChannel = SettingsManager::instance()->updateChannel()
+                             == QStringLiteral("test");
+    const ChannelCard &selected = testChannel ? m_prerelease : m_stable;
     const QString current = Cji::versionNumber();
-    bool newest = !m_stable.hasRelease || UpdateManager::compareVersions(
-                       m_stable.release.version, current) <= 0;
-    newest = newest && (!m_prerelease.hasRelease
-                        || UpdateManager::compareVersions(m_prerelease.release.version, current) <= 0);
+    const bool newest = !selected.hasRelease
+                        || UpdateManager::compareVersions(selected.release.version, current) <= 0;
 
+    const bool bothHaveUpdate = m_stable.card->isVisible() && m_prerelease.card->isVisible();
     if (newest) {
         setStatus(QStringLiteral("当前已是最新版本"), 2);
         emit checked(QStringLiteral("当前已是最新版本"));
     } else {
-        const QString newer = (m_prerelease.hasRelease
-                               && UpdateManager::compareVersions(m_prerelease.release.version, current) > 0)
-                                  ? m_prerelease.release.version
-                                  : m_stable.release.version;
-        setStatus(QStringLiteral("发现可用更新"), 1);
-        emit checked(QStringLiteral("发现新版本 v%1").arg(newer));
+        setStatus(bothHaveUpdate ? QStringLiteral("正式版和预发布版都有更新")
+                                 : QStringLiteral("发现可用更新"),
+                  1);
+        emit checked(QStringLiteral("发现新版本 v%1").arg(selected.release.version));
     }
 }
 
@@ -548,8 +605,10 @@ void UpdateDialog::applyFailure(const QString &error)
         card->state->setText(QStringLiteral("检查失败"));
         card->state->show();
         card->action->hide();
-        fillNotes(*card, {QStringLiteral("网络不通或被 GitHub 限流，点左下角「重新检查」再试一次。")});
+        fillNotes(*card, {{UpdateNoteKind::Changed,
+                           QStringLiteral("网络不通或被 GitHub 限流，点左下角「重新检查」再试一次。")}});
     }
+    syncChannelLayout();
 }
 
 void UpdateDialog::fillChannel(ChannelCard &card, bool prerelease,
@@ -570,7 +629,8 @@ void UpdateDialog::fillChannel(ChannelCard &card, bool prerelease,
         card.state->setText(QStringLiteral("暂无"));
         card.state->show();
         card.action->hide();
-        fillNotes(card, {QStringLiteral("这个通道还没有发布过版本。")});
+        fillNotes(card, {{UpdateNoteKind::Changed,
+                          QStringLiteral("这个通道还没有发布过版本。")}});
         return;
     }
 
@@ -596,12 +656,13 @@ void UpdateDialog::fillChannel(ChannelCard &card, bool prerelease,
     }
 
     if (found->notes.isEmpty())
-        fillNotes(card, {QStringLiteral("这个版本没有写更新说明。")});
+        fillNotes(card, {{UpdateNoteKind::Changed,
+                          QStringLiteral("这个版本没有写更新说明。")}});
     else
         fillNotes(card, found->notes);
 }
 
-void UpdateDialog::fillNotes(ChannelCard &card, const QStringList &notes)
+void UpdateDialog::fillNotes(ChannelCard &card, const QVector<UpdateNote> &notes)
 {
     if (!card.notesLayout)
         return;
@@ -613,28 +674,90 @@ void UpdateDialog::fillNotes(ChannelCard &card, const QStringList &notes)
         delete item;
     }
 
-    for (const QString &note : notes) {
-        auto *row = new QWidget(card.notesHost);
-        auto *layout = new QHBoxLayout(row);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(8);
+    if (notes.isEmpty())
+        return;
 
-        auto *dot = new QLabel(QStringLiteral("✦"), row);
-        dot->setObjectName(QStringLiteral("updateNoteDot"));
-        dot->setFixedWidth(12);
-        dot->setAlignment(Qt::AlignCenter);
-        layout->addWidget(dot, 0, Qt::AlignTop);
+    // 按「新增 / 调整 / 修复」的顺序分组，每组一个小标题 + 逐条列点
+    const QVector<UpdateNoteKind> order = {UpdateNoteKind::Added, UpdateNoteKind::Changed,
+                                           UpdateNoteKind::Fixed};
+    bool firstSection = true;
+    for (UpdateNoteKind kind : order) {
+        QVector<QString> texts;
+        for (const UpdateNote &note : notes) {
+            if (note.kind == kind)
+                texts << note.text;
+        }
+        if (texts.isEmpty())
+            continue;
 
-        auto *text = new QLabel(note, row);
-        text->setObjectName(QStringLiteral("updateNote"));
-        text->setWordWrap(true);
-        layout->addWidget(text, 1);
+        if (!firstSection)
+            card.notesLayout->addSpacing(6);
+        firstSection = false;
 
-        card.notesLayout->addWidget(row);
+        auto *header = new QLabel(
+            QStringLiteral("%1 · %2").arg(noteKindName(kind)).arg(texts.size()), card.notesHost);
+        header->setObjectName(QStringLiteral("updateNoteKind"));
+        header->setProperty("kind", noteKindProperty(kind));
+        card.notesLayout->addWidget(header);
+
+        for (const QString &text : texts) {
+            auto *row = new QWidget(card.notesHost);
+            auto *layout = new QHBoxLayout(row);
+            layout->setContentsMargins(0, 0, 0, 0);
+            layout->setSpacing(8);
+
+            auto *dot = new QLabel(QStringLiteral("•"), row);
+            dot->setObjectName(QStringLiteral("updateNoteDot2"));
+            dot->setProperty("kind", noteKindProperty(kind));
+            dot->setFixedWidth(12);
+            dot->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+            layout->addWidget(dot, 0, Qt::AlignTop);
+
+            auto *label = new QLabel(text, row);
+            label->setObjectName(QStringLiteral("updateNote"));
+            label->setWordWrap(true);
+            label->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+            layout->addWidget(label, 1);
+
+            card.notesLayout->addWidget(row);
+        }
     }
+
+    // 内容少的时候把多余高度留在底部，别把每组标题和列点撑开
+    card.notesLayout->addStretch(1);
 
     if (card.scroll)
         card.scroll->verticalScrollBar()->setValue(0);
+}
+
+void UpdateDialog::syncChannelLayout()
+{
+    const bool testChannel = SettingsManager::instance()->updateChannel()
+                             == QStringLiteral("test");
+    ChannelCard &selected = testChannel ? m_prerelease : m_stable;
+    ChannelCard &other = testChannel ? m_stable : m_prerelease;
+
+    const QString current = Cji::versionNumber();
+    auto hasUpdate = [&current](const ChannelCard &card) {
+        return card.hasRelease
+               && UpdateManager::compareVersions(card.release.version, current) > 0;
+    };
+
+    // 只显示对应通道；正式 + 预发布都有更新时两张都显示、各占一半
+    const bool both = hasUpdate(m_stable) && hasUpdate(m_prerelease);
+    selected.card->show();
+    other.card->setVisible(both);
+
+    for (ChannelCard *card : {&m_stable, &m_prerelease}) {
+        if (m_root) {
+            if (!card->card->isVisible())
+                m_root->setStretchFactor(card->card, 0);
+            else
+                m_root->setStretchFactor(card->card, 1);
+        }
+        if (card->scroll)
+            card->scroll->setMinimumHeight(both ? 96 : 156);
+    }
 }
 
 void UpdateDialog::installFrom(ChannelCard &card)
@@ -642,10 +765,69 @@ void UpdateDialog::installFrom(ChannelCard &card)
     if (!m_manager || !card.hasRelease)
         return;
 
-    card.action->setEnabled(false);
+    // 下载期间两张卡的升级按钮都不能再点
+    for (ChannelCard *other : {&m_stable, &m_prerelease}) {
+        if (other->hasRelease && !other->release.downloadUrl.isEmpty())
+            other->action->setEnabled(false);
+    }
     card.action->setText(QStringLiteral("下载中…"));
+
+    if (m_progress) {
+        m_progress->setRange(0, 0);   // 还不知道总大小：先转圈
+        m_progress->setValue(0);
+        m_progress->show();
+    }
+
     setStatus(QStringLiteral("正在下载 v%1 …").arg(card.release.version), 1);
+
+    // 截图 / 演示模式：不联网，假造一段下载进度
+    if (qEnvironmentVariableIsSet("CJI_UPDATE_DEMO")) {
+        auto *timer = new QTimer(this);
+        timer->setInterval(120);
+        int percent = 0;
+        connect(timer, &QTimer::timeout, this, [this, timer, percent]() mutable {
+            percent = qMin(100, percent + 7);
+            setDownloadProgress(percent, 100);
+            if (percent >= 100) {
+                timer->stop();
+                timer->deleteLater();
+                hideDownloadProgress();
+                setStatus(QStringLiteral("演示：安装包下载完成"), 2);
+            }
+        });
+        timer->start();
+        return;
+    }
+
     m_manager->downloadAndInstall(card.release.downloadUrl, card.release.version);
+}
+
+void UpdateDialog::setDownloadProgress(qint64 received, qint64 total)
+{
+    if (!m_progress)
+        return;
+
+    if (!m_progress->isVisible())
+        m_progress->show();
+
+    if (total > 0) {
+        const int percent = int(received * 100 / total);
+        m_progress->setRange(0, 100);
+        m_progress->setValue(qBound(0, percent, 100));
+        setStatus(QStringLiteral("正在下载安装包… %1%").arg(percent), 1);
+    } else {
+        m_progress->setRange(0, 0);
+        setStatus(QStringLiteral("正在下载安装包…"), 1);
+    }
+}
+
+void UpdateDialog::hideDownloadProgress()
+{
+    if (!m_progress)
+        return;
+    m_progress->hide();
+    m_progress->setRange(0, 100);
+    m_progress->setValue(0);
 }
 
 void UpdateDialog::mousePressEvent(QMouseEvent *event)

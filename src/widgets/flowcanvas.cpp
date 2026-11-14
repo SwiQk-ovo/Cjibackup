@@ -2,6 +2,9 @@
 #include "flowcanvas.h"
 #include "core/flowpath.h"
 #include "core/settingsmanager.h"
+#include "widgets/darkdialog.h"
+#include "widgets/separatordialog.h"
+#include "widgets/toast.h"
 
 #include <QAbstractAnimation>
 #include <QApplication>
@@ -74,6 +77,38 @@ QString &cameraHintModel()
     return hint;
 }
 
+// 节点上显示的示例值（年 2026 / 月 10 / 日 31 / 事件 校运会 …）
+QString sampleForItem(const FlowPath::Item &item)
+{
+    const QDateTime now = QDateTime::currentDateTime();
+    switch (item.key) {
+    case FlowPath::Key::Year:
+        return now.toString("yyyy");
+    case FlowPath::Key::Month:
+        return now.toString("MM");
+    case FlowPath::Key::Day:
+        return now.toString("dd");
+    case FlowPath::Key::Event:
+        return item.text.isEmpty() ? QStringLiteral("未命名事件") : item.text;
+    case FlowPath::Key::Custom:
+        return item.text.isEmpty() ? QStringLiteral("（待填写）") : item.text;
+    case FlowPath::Key::Camera:
+        return cameraHintModel();
+    case FlowPath::Key::Ext:
+        return QStringLiteral("JPG");
+    case FlowPath::Key::Seq:
+        return QStringLiteral("0001");
+    }
+    return QString();
+}
+
+QString itemTitle(const FlowPath::Item &item)
+{
+    if (const FlowPaletteItem *palette = flowPaletteItem(FlowPath::keyName(item.key)))
+        return palette->name;
+    return FlowPath::keyName(item.key);
+}
+
 } // namespace
 
 /* ------------------------------------------------------------------ */
@@ -114,6 +149,24 @@ FlowNodeItem::FlowNodeItem(const QString &key, const QString &text, QGraphicsIte
     , m_key(key)
     , m_text(text)
 {
+    initItem();
+}
+
+FlowNodeItem::FlowNodeItem(const QVector<FlowPath::Item> &members, const QString &separator,
+                           QGraphicsItem *parent)
+    : QGraphicsObject(parent)
+    , m_members(members)
+    , m_sep(separator.isEmpty() ? QStringLiteral("-") : separator)
+    , m_merged(!members.isEmpty())
+{
+    if (!members.isEmpty())
+        m_key = FlowPath::keyName(members.first().key);
+    initItem();
+    setToolTip(QStringLiteral("合并节点：双击可改分隔符，右键可拆分"));
+}
+
+void FlowNodeItem::initItem()
+{
     setAcceptHoverEvents(true);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     setCacheMode(QGraphicsItem::DeviceCoordinateCache);
@@ -133,6 +186,44 @@ QPointF FlowNodeItem::leftPort() const
 QPointF FlowNodeItem::rightPort() const
 {
     return pos() + QPointF(kNodeW, kNodeH / 2.0);
+}
+
+QVector<FlowPath::Item> FlowNodeItem::members() const
+{
+    if (m_merged)
+        return m_members;
+    FlowPath::Item item;
+    if (!FlowPath::keyFromName(m_key, &item.key))
+        return {};
+    item.text = m_text;
+    return {item};
+}
+
+void FlowNodeItem::setSeparator(const QString &sep)
+{
+    const QString value = sep.isEmpty() ? QStringLiteral("-") : sep;
+    if (m_sep == value)
+        return;
+    m_sep = value;
+    update();
+}
+
+void FlowNodeItem::setMemberText(int index, const QString &text)
+{
+    if (index < 0 || index >= m_members.size())
+        return;
+    m_members[index].text = text;
+    if (index == 0)
+        m_text = text;
+    update();
+}
+
+QStringList FlowNodeItem::sampleParts() const
+{
+    QStringList parts;
+    for (const FlowPath::Item &item : members())
+        parts << sampleForItem(item);
+    return parts;
 }
 
 void FlowNodeItem::setText(const QString &text)
@@ -159,12 +250,24 @@ void FlowNodeItem::setChainActive(bool active)
 
 QString FlowNodeItem::title() const
 {
+    if (m_merged) {
+        QStringList names;
+        for (const FlowPath::Item &item : m_members)
+            names << itemTitle(item);
+        return names.join(QStringLiteral("·"));
+    }
     const FlowPaletteItem *item = flowPaletteItem(m_key);
     return item ? item->name : m_key;
 }
 
 QString FlowNodeItem::subtitle() const
 {
+    if (m_merged) {
+        QStringList parts = sampleParts();
+        parts.removeAll(QString());
+        return parts.join(m_sep);
+    }
+
     if (m_key == QStringLiteral("event"))
         return m_text.isEmpty() ? QStringLiteral("（待命名）") : m_text;
     if (m_key == QStringLiteral("custom"))
@@ -195,6 +298,13 @@ void FlowNodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QW
                               ? (m_hovered ? kAccentSoft : kAccent)
                               : (m_hovered ? QColor(70, 78, 94) : kCardBorder);
 
+    // 合并节点：外面多一圈浅色光带，一眼看出"这几个分类被捆在一起了"
+    if (m_merged) {
+        painter->setPen(QPen(QColor(76, 141, 255, 120), 1.0));
+        painter->setBrush(QColor(76, 141, 255, 22));
+        painter->drawRoundedRect(body.adjusted(-4, -4, 4, 4), 15, 15);
+    }
+
     // 阴影
     painter->setPen(Qt::NoPen);
     painter->setBrush(QColor(0, 8, 20, m_active ? 90 : 50));
@@ -213,7 +323,7 @@ void FlowNodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QW
     // 标题
     QFont font = painter->font();
     font.setBold(true);
-    font.setPixelSize(13);
+    font.setPixelSize(14);
     painter->setFont(font);
     painter->setPen(m_active ? kTextMain : QColor(170, 176, 188));
     painter->drawText(QRectF(14, 8, kNodeW - 24, 18), Qt::AlignLeft | Qt::AlignVCenter,
@@ -223,7 +333,7 @@ void FlowNodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QW
     const QString sub = subtitle();
     if (!sub.isEmpty()) {
         font.setBold(false);
-        font.setPixelSize(11);
+        font.setPixelSize(12);
         painter->setFont(font);
         painter->setPen(m_active ? kTextDim : QColor(112, 119, 132));
         painter->drawText(QRectF(14, 28, kNodeW - 24, 16), Qt::AlignLeft | Qt::AlignVCenter,
@@ -291,6 +401,21 @@ void FlowNodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     QGraphicsObject::mouseReleaseEvent(event);
 }
 
+void FlowNodeItem::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
+{
+    // 双击合并节点：改分隔符
+    if (event->button() == Qt::LeftButton && m_merged) {
+        m_dragging = false;
+        setZValue(1.0);
+        if (auto *flowScene = qobject_cast<FlowScene *>(scene())) {
+            flowScene->editMergedSeparator(this);
+            event->accept();
+            return;
+        }
+    }
+    QGraphicsObject::mouseDoubleClickEvent(event);
+}
+
 void FlowNodeItem::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 {
     m_hovered = true;
@@ -333,14 +458,26 @@ QStringList FlowScene::config() const
     }
 
     QSet<FlowNodeItem *> visited;
+    int groupId = 0;
     for (FlowNodeItem *node = start; node && !visited.contains(node);
          node = m_next.value(node, nullptr)) {
         visited.insert(node);
-        FlowPath::Item item;
-        if (!FlowPath::keyFromName(node->key(), &item.key))
+        const QVector<FlowPath::Item> members = node->members();
+        if (members.isEmpty())
             continue;
-        item.text = node->text();
-        items.append(item);
+
+        if (!node->isMerged()) {
+            items.append(members.first());
+            continue;
+        }
+
+        ++groupId;
+        for (const FlowPath::Item &member : members) {
+            FlowPath::Item item = member;
+            item.joinSep = node->separator();
+            item.groupId = groupId;
+            items.append(item);
+        }
     }
 
     return FlowPath::serialize(items);
@@ -359,18 +496,56 @@ void FlowScene::setConfig(const QStringList &config)
     m_prev.clear();
     m_dropLevel = -1;
 
+    // 同一 groupId 的连续分类项收成一个合并节点
     const QVector<FlowPath::Item> items = FlowPath::parse(config);
+    QVector<FlowPath::Item> group;
+    int groupId = 0;
+    QString groupSep;
+
+    auto flushGroup = [this, &group, &groupId, &groupSep]() {
+        if (!group.isEmpty() && m_nodes.size() < kMaxLevels)
+            appendMergedNode(group, groupSep);
+        group.clear();
+        groupId = 0;
+        groupSep.clear();
+    };
+
     for (const FlowPath::Item &item : items) {
         if (m_nodes.size() >= kMaxLevels)
             break;
+
+        if (item.groupId > 0 && !item.joinSep.isEmpty()) {
+            if (item.groupId != groupId) {
+                flushGroup();
+                groupId = item.groupId;
+                groupSep = item.joinSep;
+            }
+            group.append(item);
+            continue;
+        }
+
+        flushGroup();
         insertNode(FlowPath::keyName(item.key), item.text, -1);
     }
+    flushGroup();
 
     m_loading = false;
     reindex();
     relayout(false);
     rebuildChain();
     update();
+}
+
+void FlowScene::appendMergedNode(const QVector<FlowPath::Item> &members, const QString &separator)
+{
+    auto *node = new FlowNodeItem(members, separator);
+    addItem(node);
+    m_nodes.append(node);
+
+    // link() 会比较 level，所以先把新节点的层级排好，再连到前一个节点
+    reindex();
+    if (m_nodes.size() > 1)
+        link(m_nodes.at(m_nodes.size() - 2), node);
 }
 
 void FlowScene::clearAll()
@@ -393,8 +568,10 @@ void FlowScene::setCanvasSize(const QSize &size)
 bool FlowScene::containsKey(const QString &key) const
 {
     for (const FlowNodeItem *node : m_nodes) {
-        if (node->key() == key)
-            return true;
+        for (const FlowPath::Item &item : node->members()) {
+            if (FlowPath::keyName(item.key) == key)
+                return true;
+        }
     }
     return false;
 }
@@ -442,6 +619,71 @@ void FlowScene::insertFromPalette(const QString &key, int level)
     }
 
     insertNode(key, text, level < 0 ? m_nodes.size() : level);
+}
+
+void FlowScene::addPaletteItemToNode(const QString &key, FlowNodeItem *target, bool before)
+{
+    const FlowPaletteItem *item = flowPaletteItem(key);
+    if (!item || !target || !m_nodes.contains(target))
+        return;
+
+    if (key == QStringLiteral("seq")) {
+        emit statusMessage(QStringLiteral("「序号」只影响文件名，不能合并进文件夹"));
+        return;
+    }
+
+    const bool allowDuplicate = (key == QStringLiteral("event") || key == QStringLiteral("custom"));
+    if (!allowDuplicate && containsKey(key)) {
+        emit statusMessage(QStringLiteral("「%1」已经在流程里了").arg(item->name));
+        return;
+    }
+
+    QString text;
+    if (key == QStringLiteral("event") || key == QStringLiteral("custom")) {
+        if (!m_canvas || !m_canvas->askNodeText(key, QString(), &text))
+            return;
+    }
+
+    FlowPath::Item added;
+    if (!FlowPath::keyFromName(key, &added.key))
+        return;
+    added.text = text;
+
+    QVector<FlowPath::Item> members = target->members();
+    if (members.size() >= kMaxLevels) {
+        emit statusMessage(QStringLiteral("一个合并节点最多 %1 项").arg(kMaxLevels));
+        return;
+    }
+    if (before)
+        members.prepend(added);
+    else
+        members.append(added);
+
+    QStringList sampleParts;
+    for (const FlowPath::Item &member : members)
+        sampleParts << sampleForItem(member);
+
+    const QString initial = target->isMerged() ? target->separator()
+                                               : SettingsManager::instance()->mergeSeparator();
+    QString separator;
+    if (!m_canvas || !m_canvas->askMergeSeparator(initial, sampleParts, &separator))
+        return;
+
+    const int index = m_nodes.indexOf(target);
+    m_nodes.removeAll(target);
+    m_prev.remove(target);
+    m_next.remove(target);
+    removeItem(target);
+    target->deleteLater();
+
+    auto *merged = new FlowNodeItem(members, separator);
+    addItem(merged);
+    m_nodes.insert(qBound(0, index, m_nodes.size()), merged);
+    reindex();
+    relinkByOrder();
+    relayout(true);
+    notifyChanged();
+    emit statusMessage(QStringLiteral("已合并：%1").arg(merged->title()));
 }
 
 void FlowScene::insertNode(const QString &key, const QString &text, int level)
@@ -648,6 +890,12 @@ void FlowScene::finishNodeDrag(FlowNodeItem *node)
     if (from < 0)
         return;
 
+    // 拖到另一个节点身上 → 合并（弹窗里选分隔符）
+    if (FlowNodeItem *target = mergeTargetAt(node)) {
+        mergeNodes(node, target);
+        return;
+    }
+
     const qreal centerX = node->pos().x() + kNodeW / 2.0;
     int to = 0;
     for (FlowNodeItem *other : m_nodes) {
@@ -663,10 +911,7 @@ void FlowScene::finishNodeDrag(FlowNodeItem *node)
         reindex();
 
         // 顺序变了：按新顺序重新连成一条链，避免出现悬空/反向的连线
-        m_next.clear();
-        m_prev.clear();
-        for (int i = 0; i + 1 < m_nodes.size(); ++i)
-            link(m_nodes.at(i), m_nodes.at(i + 1));
+        relinkByOrder();
 
         QStringList names;
         for (const FlowNodeItem *n : m_nodes)
@@ -676,6 +921,218 @@ void FlowScene::finishNodeDrag(FlowNodeItem *node)
 
     relayout(true);
     notifyChanged();
+}
+
+FlowNodeItem *FlowScene::mergeTargetAt(FlowNodeItem *node) const
+{
+    if (!node)
+        return nullptr;
+
+    const QRectF self(node->pos(), QSizeF(kNodeW, kNodeH));
+    const qreal area = kNodeW * kNodeH;
+    FlowNodeItem *best = nullptr;
+    qreal bestArea = 0.0;
+
+    for (FlowNodeItem *other : m_nodes) {
+        if (other == node)
+            continue;
+        const QRectF otherRect(other->pos(), QSizeF(kNodeW, kNodeH));
+        const QRectF overlap = self.intersected(otherRect);
+        const qreal covered = overlap.width() * overlap.height();
+        // 重叠超过 30% 才算"拖到它身上"，避免只是轻轻擦过
+        if (covered >= area * 0.30 && covered > bestArea) {
+            best = other;
+            bestArea = covered;
+        }
+    }
+    return best;
+}
+
+void FlowScene::mergeNodes(FlowNodeItem *dragged, FlowNodeItem *target)
+{
+    if (!dragged || !target || dragged == target) {
+        relayout(true);
+        return;
+    }
+
+    const QVector<FlowPath::Item> draggedMembers = dragged->members();
+    const QVector<FlowPath::Item> targetMembers = target->members();
+
+    auto hasSeq = [](const QVector<FlowPath::Item> &members) {
+        for (const FlowPath::Item &item : members) {
+            if (item.key == FlowPath::Key::Seq)
+                return true;
+        }
+        return false;
+    };
+    if (hasSeq(draggedMembers) || hasSeq(targetMembers)) {
+        emit statusMessage(QStringLiteral("「序号」只影响文件名，不能合并进文件夹"));
+        relayout(true);
+        return;
+    }
+
+    // 成员顺序按流程图里原来的先后（拖动不会改变流程顺序）
+    const bool draggedFirst = dragged->level() <= target->level();
+    QVector<FlowPath::Item> members;
+    for (const FlowPath::Item &item : (draggedFirst ? draggedMembers : targetMembers))
+        members.append(item);
+    for (const FlowPath::Item &item : (draggedFirst ? targetMembers : draggedMembers))
+        members.append(item);
+
+    if (members.size() > kMaxLevels) {
+        emit statusMessage(QStringLiteral("一个合并节点最多 %1 项").arg(kMaxLevels));
+        relayout(true);
+        return;
+    }
+
+    // 先恢复布局再弹窗：弹窗期间节点不会停在别的节点身上
+    relayout(true);
+
+    QPointer<FlowNodeItem> draggedGuard(dragged);
+    QPointer<FlowNodeItem> targetGuard(target);
+    const QString initial = target->isMerged() ? target->separator()
+                                               : SettingsManager::instance()->mergeSeparator();
+    QStringList sampleParts;
+    for (const FlowPath::Item &item : members)
+        sampleParts << sampleForItem(item);
+
+    QTimer::singleShot(0, this, [this, draggedGuard, targetGuard, members, sampleParts, initial]() {
+        if (!draggedGuard || !targetGuard || !m_nodes.contains(draggedGuard)
+            || !m_nodes.contains(targetGuard)) {
+            return;
+        }
+
+        QString separator;
+        if (!m_canvas || !m_canvas->askMergeSeparator(initial, sampleParts, &separator)) {
+            relayout(true);
+            return;
+        }
+
+        FlowNodeItem *first = draggedGuard;
+        FlowNodeItem *second = targetGuard;
+        const int index = qMin(m_nodes.indexOf(first), m_nodes.indexOf(second));
+
+        for (FlowNodeItem *node : {first, second}) {
+            m_nodes.removeAll(node);
+            m_prev.remove(node);
+            m_next.remove(node);
+            removeItem(node);
+            node->deleteLater();
+        }
+
+        auto *merged = new FlowNodeItem(members, separator);
+        addItem(merged);
+        m_nodes.insert(qBound(0, index, m_nodes.size()), merged);
+        reindex();
+        relinkByOrder();
+        relayout(true);
+        notifyChanged();
+        emit statusMessage(QStringLiteral("已合并：%1").arg(merged->title()));
+    });
+}
+
+void FlowScene::unmergeNode(FlowNodeItem *node)
+{
+    if (!node || !node->isMerged() || !m_nodes.contains(node))
+        return;
+
+    const int index = m_nodes.indexOf(node);
+    const QVector<FlowPath::Item> members = node->members();
+    if (members.size() < 2) {
+        relayout(true);
+        return;
+    }
+
+    m_nodes.removeAll(node);
+    m_prev.remove(node);
+    m_next.remove(node);
+    removeItem(node);
+    node->deleteLater();
+
+    int insertAt = qBound(0, index, m_nodes.size());
+    for (const FlowPath::Item &item : members) {
+        auto *single = new FlowNodeItem(FlowPath::keyName(item.key), item.text);
+        addItem(single);
+        m_nodes.insert(insertAt++, single);
+    }
+
+    reindex();
+    relinkByOrder();
+    relayout(true);
+    notifyChanged();
+    emit statusMessage(QStringLiteral("已拆开合并节点"));
+}
+
+void FlowScene::removeNodeWithConfirm(FlowNodeItem *node)
+{
+    if (!node || !m_nodes.contains(node))
+        return;
+
+    const QString title = node->title();
+    if (!DarkDialog::confirmTwice(m_canvas, QStringLiteral("删除节点"),
+                                  QStringLiteral("确定要删除节点「%1」吗？").arg(title),
+                                  QStringLiteral("删除"))) {
+        return;
+    }
+
+    const QStringList snapshot = config();
+    removeNode(node);
+
+    QPointer<FlowScene> guard(this);
+    Toast::showToast(QStringLiteral("已删除节点"), title, Toast::Success, 10000,
+                     QStringLiteral("撤销"), [guard, snapshot]() {
+                         if (!guard)
+                             return;
+                         guard->setConfig(snapshot);
+                         guard->notifyChanged();
+                     });
+}
+
+void FlowScene::restoreLinks(const QVector<QPair<int, int>> &links)
+{
+    m_next.clear();
+    m_prev.clear();
+
+    for (const QPair<int, int> &pair : links) {
+        FlowNodeItem *from = nullptr;
+        FlowNodeItem *to = nullptr;
+        for (FlowNodeItem *node : m_nodes) {
+            if (node->level() == pair.first)
+                from = node;
+            else if (node->level() == pair.second)
+                to = node;
+        }
+        if (from && to)
+            link(from, to);
+    }
+
+    notifyChanged();
+}
+
+void FlowScene::relinkByOrder()
+{
+    m_next.clear();
+    m_prev.clear();
+    for (int i = 0; i + 1 < m_nodes.size(); ++i)
+        link(m_nodes.at(i), m_nodes.at(i + 1));
+}
+
+void FlowScene::editMergedSeparator(FlowNodeItem *node)
+{
+    if (!node || !node->isMerged())
+        return;
+
+    QString separator;
+    if (!m_canvas
+        || !m_canvas->askMergeSeparator(node->separator(), node->sampleParts(), &separator)) {
+        return;
+    }
+
+    node->setSeparator(separator);
+    notifyChanged();
+    emit statusMessage(QStringLiteral("分隔符已改成「%1」")
+                           .arg(separator == QStringLiteral(" ") ? QStringLiteral("空格")
+                                                                 : separator));
 }
 
 void FlowScene::notifyChanged()
@@ -900,6 +1357,21 @@ void FlowScene::drawForeground(QPainter *painter, const QRectF &rect)
         painter->drawEllipse(to, 3.5, 3.5);
     }
 
+    // 拖分类项到节点上：把那个节点整体圈出来，松手就合并进去
+    if (m_dropTarget) {
+        const QRectF box(m_dropTarget->pos(), QSizeF(kNodeW, kNodeH));
+        painter->setPen(QPen(kAccentSoft, 2.0));
+        painter->setBrush(QColor(76, 141, 255, 30));
+        painter->drawRoundedRect(box.adjusted(-5, -5, 5, 5), 15, 15);
+
+        QFont font = painter->font();
+        font.setPixelSize(12);
+        painter->setFont(font);
+        painter->setPen(kAccentSoft);
+        painter->drawText(box.translated(0, -20), Qt::AlignCenter,
+                          QStringLiteral("松手合并进这个节点"));
+    }
+
     // 拖入位置指示
     if (m_dropLevel >= 0) {
         qreal x = kMarginX - 12;
@@ -914,12 +1386,13 @@ void FlowScene::drawForeground(QPainter *painter, const QRectF &rect)
     // 空画布提示
     if (m_nodes.isEmpty()) {
         QFont font = painter->font();
-        font.setPixelSize(13);
+        font.setPixelSize(14);
         painter->setFont(font);
         painter->setPen(kTextMuted);
         const qreal width = qMin(sceneRect().width(), qreal(m_canvasSize.width()));
         painter->drawText(QRectF(0, 0, width, sceneRect().height()), Qt::AlignCenter,
                           QStringLiteral("把上面的分类项拖到这里，从左到右排成一条流程\n"
+                                         "把一个节点拖到另一个节点上可以合并成一层文件夹\n"
                                          "右键拖到右侧节点可连线，右键节点可改名 / 删除"));
     }
 }
@@ -929,9 +1402,8 @@ void FlowScene::drawForeground(QPainter *painter, const QRectF &rect)
 void FlowScene::dragEnterEvent(QGraphicsSceneDragDropEvent *event)
 {
     if (event->mimeData()->hasFormat(FlowMime::Format)) {
-        m_dropLevel = levelForX(event->scenePos().x());
+        updateDropIndicator(event->scenePos());
         event->acceptProposedAction();
-        update();
         return;
     }
     QGraphicsScene::dragEnterEvent(event);
@@ -940,11 +1412,7 @@ void FlowScene::dragEnterEvent(QGraphicsSceneDragDropEvent *event)
 void FlowScene::dragMoveEvent(QGraphicsSceneDragDropEvent *event)
 {
     if (event->mimeData()->hasFormat(FlowMime::Format)) {
-        const int level = levelForX(event->scenePos().x());
-        if (level != m_dropLevel) {
-            m_dropLevel = level;
-            update();
-        }
+        updateDropIndicator(event->scenePos());
         event->acceptProposedAction();
         return;
     }
@@ -953,18 +1421,37 @@ void FlowScene::dragMoveEvent(QGraphicsSceneDragDropEvent *event)
 
 void FlowScene::dragLeaveEvent(QGraphicsSceneDragDropEvent *event)
 {
-    if (m_dropLevel >= 0) {
+    if (m_dropLevel >= 0 || m_dropTarget) {
         m_dropLevel = -1;
+        m_dropTarget = nullptr;
         update();
     }
     QGraphicsScene::dragLeaveEvent(event);
+}
+
+void FlowScene::updateDropIndicator(const QPointF &scenePos)
+{
+    FlowNodeItem *target = nodeAt(scenePos);
+    if (target != m_dropTarget) {
+        m_dropTarget = target;
+        update();
+    }
+
+    // 悬停在节点上时不再画竖线，改用节点高亮
+    const int level = target ? -1 : levelForX(scenePos.x());
+    if (level != m_dropLevel) {
+        m_dropLevel = level;
+        update();
+    }
 }
 
 void FlowScene::dropEvent(QGraphicsSceneDragDropEvent *event)
 {
     const QString key = QString::fromUtf8(event->mimeData()->data(FlowMime::Format));
     const int level = m_dropLevel;
+    FlowNodeItem *target = m_dropTarget;
     m_dropLevel = -1;
+    m_dropTarget = nullptr;
     update();
 
     if (key.isEmpty()) {
@@ -972,6 +1459,17 @@ void FlowScene::dropEvent(QGraphicsSceneDragDropEvent *event)
         return;
     }
     event->acceptProposedAction();
+
+    // 直接拖到某个节点身上：合并进去（不用先放到画布再拖第二次）
+    if (target) {
+        const bool before = event->scenePos().x() < target->pos().x() + kNodeW / 2.0;
+        QPointer<FlowNodeItem> guard(target);
+        QTimer::singleShot(0, this, [this, key, guard, before]() {
+            if (guard && m_nodes.contains(guard))
+                addPaletteItemToNode(key, guard, before);
+        });
+        return;
+    }
 
     // 等拖放操作结束后再插入（插入可能要弹对话框）
     QTimer::singleShot(0, this, [this, key, level]() {
@@ -1060,6 +1558,42 @@ void FlowScene::showNodeMenu(FlowNodeItem *node, const QPoint &screenPos)
         return;
 
     QMenu menu;
+
+    if (node->isMerged()) {
+        QAction *sepAct = menu.addAction(QStringLiteral("改分隔符…"));
+        connect(sepAct, &QAction::triggered, this, [this, node]() { editMergedSeparator(node); });
+
+        // 合并节点里的「事件 / 自定义」也能改名
+        const QVector<FlowPath::Item> members = node->members();
+        for (int i = 0; i < members.size(); ++i) {
+            const FlowPath::Item member = members.at(i);
+            if (member.key != FlowPath::Key::Event && member.key != FlowPath::Key::Custom)
+                continue;
+            const QString key = FlowPath::keyName(member.key);
+            QAction *rename = menu.addAction(
+                QStringLiteral("重命名「%1」…").arg(itemTitle(member)));
+            connect(rename, &QAction::triggered, this, [this, node, key, i, member]() {
+                QString text = member.text;
+                if (m_canvas && m_canvas->askNodeText(key, text, &text)) {
+                    node->setMemberText(i, text);
+                    notifyChanged();
+                }
+            });
+        }
+
+        menu.addSeparator();
+        QAction *splitAct = menu.addAction(QStringLiteral("拆开合并节点"));
+        connect(splitAct, &QAction::triggered, this, [this, node]() { unmergeNode(node); });
+
+        menu.addSeparator();
+        QAction *removeAct = menu.addAction(QStringLiteral("删除节点"));
+        connect(removeAct, &QAction::triggered, this,
+                [this, node]() { removeNodeWithConfirm(node); });
+
+        menu.exec(screenPos);
+        return;
+    }
+
     if (node->key() == QStringLiteral("event") || node->key() == QStringLiteral("custom")) {
         QAction *rename = menu.addAction(QStringLiteral("重命名…"));
         connect(rename, &QAction::triggered, this, [this, node]() {
@@ -1092,15 +1626,35 @@ void FlowScene::showNodeMenu(FlowNodeItem *node, const QPoint &screenPos)
 
     QAction *unlinkAllAct = menu.addAction(QStringLiteral("断开全部连线"));
     connect(unlinkAllAct, &QAction::triggered, this, [this]() {
+        QVector<QPair<int, int>> links;
+        for (auto it = m_next.constBegin(); it != m_next.constEnd(); ++it)
+            links.append({it.key()->level(), it.value()->level()});
+
+        if (!DarkDialog::confirmTwice(
+                m_canvas, QStringLiteral("断开全部连线"),
+                QStringLiteral("所有节点会变成互不相连，目录预览里就只剩连成一条链的部分。确定要断开吗？"),
+                QStringLiteral("全部断开"))) {
+            return;
+        }
+
         m_next.clear();
         m_prev.clear();
         notifyChanged();
-        emit statusMessage(QStringLiteral("已断开全部连线，右键空白处可恢复顺序连线"));
+        emit statusMessage(QStringLiteral("已断开全部连线"));
+
+        QPointer<FlowScene> guard(this);
+        Toast::showToast(QStringLiteral("已断开全部连线"),
+                         QStringLiteral("原来的连线已经全部取消"), Toast::Success, 10000,
+                         QStringLiteral("撤销"), [guard, links]() {
+                             if (guard)
+                                 guard->restoreLinks(links);
+                         });
     });
 
     menu.addSeparator();
     QAction *removeAct = menu.addAction(QStringLiteral("删除节点"));
-    connect(removeAct, &QAction::triggered, this, [this, node]() { removeNode(node); });
+    connect(removeAct, &QAction::triggered, this,
+            [this, node]() { removeNodeWithConfirm(node); });
 
     menu.exec(screenPos);
 }
@@ -1115,8 +1669,10 @@ void FlowScene::showCanvasMenu(const QPoint &screenPos)
     QAction *clear = menu.addAction(QStringLiteral("清空画布"));
     clear->setEnabled(!m_nodes.isEmpty());
     connect(clear, &QAction::triggered, this, [this]() {
-        clearAll();
-        emit statusMessage(QStringLiteral("画布已清空"));
+        if (m_canvas)
+            m_canvas->clearAll();
+        else
+            clearAll();
     });
 
     menu.exec(screenPos);
@@ -1254,7 +1810,7 @@ FlowCanvas::FlowCanvas(QWidget *parent)
     m_statusLabel = new QLabel(this);
     m_statusLabel->setObjectName(QStringLiteral("flowStatus"));
     m_statusLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_statusLabel->setMaximumWidth(320);
+    m_statusLabel->setMaximumWidth(240);
     palette->addWidget(m_statusLabel);
 
     auto *clearBtn = new QPushButton(QStringLiteral("清空"), this);
@@ -1315,8 +1871,30 @@ void FlowCanvas::clearAll()
 {
     if (m_scene->nodeCount() == 0)
         return;
+
+    const QStringList snapshot = m_scene->config();
+    if (!DarkDialog::confirmTwice(this, QStringLiteral("清空画布"),
+                                  QStringLiteral("画布上的所有分类项都会被移除，确定要清空吗？"),
+                                  QStringLiteral("清空画布"))) {
+        return;
+    }
+
     m_scene->clearAll();
     showStatus(QStringLiteral("画布已清空"));
+
+    QPointer<FlowCanvas> guard(this);
+    Toast::showToast(QStringLiteral("画布已清空"),
+                     QStringLiteral("原来的 %1 个分类项已经移除").arg(snapshot.size()),
+                     Toast::Success, 10000, QStringLiteral("撤销"), [guard, snapshot]() {
+                         if (guard)
+                             guard->restoreConfig(snapshot);
+                     });
+}
+
+void FlowCanvas::restoreConfig(const QStringList &config)
+{
+    setFlowConfig(config);
+    emit flowChanged(flowConfig());
 }
 
 void FlowCanvas::addPaletteItem(const QString &key)
@@ -1372,6 +1950,12 @@ bool FlowCanvas::askNodeText(const QString &key, const QString &initial, QString
     return true;
 }
 
+bool FlowCanvas::askMergeSeparator(const QString &initial, const QStringList &sampleParts,
+                                   QString *separator)
+{
+    return SeparatorDialog::choose(this, initial, sampleParts, separator);
+}
+
 void FlowCanvas::updatePreview()
 {
     const QString path = FlowPath::preview(m_scene->config(), cameraHintModel());
@@ -1382,6 +1966,11 @@ void FlowCanvas::updatePreview()
     }
     m_previewLabel->setText(QStringLiteral("目录预览：%1").arg(path));
     m_previewLabel->setToolTip(path);
+}
+
+void FlowCanvas::refreshPreview()
+{
+    updatePreview();
 }
 
 void FlowCanvas::setCameraModelHint(const QString &model)
@@ -1400,8 +1989,13 @@ void FlowCanvas::showStatus(const QString &message)
 {
     if (message.isEmpty()) {
         m_statusLabel->clear();
+        m_statusLabel->setToolTip(QString());
         return;
     }
-    m_statusLabel->setText(message);
+
+    // 状态栏宽度有限：超长消息省略显示，完整内容放 tooltip，避免把整页撑宽
+    const int width = 224;
+    m_statusLabel->setText(m_statusLabel->fontMetrics().elidedText(message, Qt::ElideRight, width));
+    m_statusLabel->setToolTip(message);
     m_statusTimer->start();
 }

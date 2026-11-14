@@ -46,7 +46,7 @@ $env:PATH = "$MingwBin;$qtBin;$env:PATH"
 # 注意：build 目录里还有 CjibackupSetup / CjibackupUninstall / CjibackupBootstrap /
 #       packer / CjiPublisher / 测试 / 截图工具，必须全部排除，只留主程序
 $appExe = Get-ChildItem $BuildDir -Filter "*.exe" -File | Where-Object {
-    $_.Name -notmatch 'Setup|Uninstall|Bootstrap|_test|smoke|shot_tool|packer|Publisher'
+    $_.Name -notmatch 'Setup|Uninstall|Bootstrap|_test|smoke|shot_tool|packer|Publisher|probe'
 } | Select-Object -First 1
 if (-not $appExe) { throw "找不到主程序 exe" }
 if ($appExe.Name -ne "KOPAL.exe") {
@@ -73,11 +73,11 @@ Copy-Item $appExe.FullName (Join-Path $stage $appExe.Name)
 Sign-File (Join-Path $stage $appExe.Name)
 Sign-File $uninstallExe
 
-$qtDlls = @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6Network.dll", "Qt6Multimedia.dll")
+$qtDlls = @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6Network.dll", "Qt6Multimedia.dll",
+            "Qt6MultimediaWidgets.dll", "Qt6Svg.dll", "Qt6Concurrent.dll")
 foreach ($dll in $qtDlls) {
     $src = Join-Path $qtBin $dll
-    if (-not (Test-Path $src)) { throw "缺少 Qt 运行库: $src" }
-    Copy-Item $src $stage
+    if (Test-Path $src) { Copy-Item $src $stage }
 }
 
 $mingwDlls = @("libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll")
@@ -91,7 +91,7 @@ $pluginGroups = @(
     @{ dir = "platforms";      files = @("qwindows.dll") },
     @{ dir = "styles";         files = @("qwindowsvistastyle.dll") },
     @{ dir = "tls";            files = @("qschannelbackend.dll") },
-    @{ dir = "imageformats";   files = @("qgif.dll", "qjpeg.dll", "qico.dll") },
+    @{ dir = "imageformats";   files = @("qgif.dll", "qjpeg.dll", "qico.dll", "qsvg.dll") },
     @{ dir = "multimedia";     files = @("windowsmediaplugin.dll") }
 )
 foreach ($group in $pluginGroups) {
@@ -122,7 +122,10 @@ if ($LASTEXITCODE -ne 0) { throw "打包载荷失败" }
 Write-Step "生成引导载荷（不压缩，给引导程序用）"
 Copy-Item $setupExe (Join-Path $boot "CjibackupSetup.exe")
 Copy-Item (Join-Path $DistDir "payload.pack") $boot
-foreach ($dll in $qtDlls) { Copy-Item (Join-Path $qtBin $dll) $boot }
+foreach ($dll in $qtDlls) {
+    $src = Join-Path $qtBin $dll
+    if (Test-Path $src) { Copy-Item $src $boot }
+}
 foreach ($dll in $mingwDlls) { Copy-Item (Join-Path $MingwBin $dll) $boot }
 foreach ($group in $pluginGroups) {
     $targetDir = Join-Path $boot $group.dir

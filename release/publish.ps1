@@ -45,7 +45,7 @@ if (-not $Token -and (Test-Path $tokenFile)) { $Token = (Get-Content $tokenFile 
 if (-not $Token) { Fail "没有找到 token。请把 token 存到 $tokenFile，或设置环境变量 GH_TOKEN" }
 
 # ---- notes ----
-if (-not $Notes -and $NotesPath -and (Test-Path $NotesPath)) { $Notes = Get-Content $NotesPath -Raw }
+if (-not $Notes -and $NotesPath -and (Test-Path $NotesPath)) { $Notes = Get-Content $NotesPath -Raw -Encoding UTF8 }
 if (-not $Notes) { $Notes = "Cjibackup v$Version" }
 
 # ---- assets ----
@@ -65,7 +65,7 @@ if (-not $Assets -or $Assets.Count -eq 0) {
     $Assets = @()
     $official = Join-Path $verDir "正式版"
     if (Test-Path $official) {
-        $Assets += (Get-ChildItem $official -File | Select-Object -ExpandProperty FullName)
+        $Assets += (Get-ChildItem $official -File | Where-Object { $_.Extension -in @(".exe", ".zip") } | Select-Object -ExpandProperty FullName)  # 只传安装包/压缩包
     }
     if ($Assets.Count -eq 0) { Fail "没找到附件：$official 目录是空的，且没有用 -Assets 指定" }
 }

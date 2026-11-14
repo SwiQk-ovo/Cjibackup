@@ -10,15 +10,24 @@ class QFile;
 class QNetworkAccessManager;
 class QNetworkReply;
 
+/** 一条更新说明（按「新增 / 调整 / 修复」分组显示） */
+enum class UpdateNoteKind { Added, Changed, Fixed };
+
+struct UpdateNote
+{
+    UpdateNoteKind kind = UpdateNoteKind::Changed;
+    QString text;
+};
+
 /** 一条 GitHub Release（更新窗口用） */
 struct UpdateRelease
 {
-    QString version;        // 1.1.0
-    QString title;          // Release 标题
-    QString date;           // 2026-11-01
-    QStringList notes;      // 拆好的一条条更新说明
-    QString downloadUrl;    // 安装包地址
-    QString pageUrl;        // Release 页面
+    QString version;              // 1.1.0
+    QString title;                // Release 标题
+    QString date;                 // 2026-11-01
+    QVector<UpdateNote> notes;    // 拆好的一条条更新说明（带分类）
+    QString downloadUrl;          // 安装包地址
+    QString pageUrl;              // Release 页面
     bool prerelease = false;
 };
 
@@ -41,8 +50,8 @@ public:
     // "测试 v0.3.0" / "v0.3.0" / "0.3" -> "0.3.0"
     static QString normalizeVersion(const QString &raw);
     static int compareVersions(const QString &a, const QString &b);
-    // Release 说明 -> 一条条纯文本（去掉 markdown 符号、空行、超长行）
-    static QStringList parseReleaseNotes(const QString &raw);
+    // Release 说明 -> 一条条纯文本，并按「新增 / 调整 / 修复」分好类
+    static QVector<UpdateNote> parseReleaseNotes(const QString &raw);
 
 signals:
     void statusChanged(const QString &text);

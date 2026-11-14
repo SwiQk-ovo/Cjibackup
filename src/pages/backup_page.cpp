@@ -7,9 +7,12 @@
 #include "core/exifscanner.h"
 #include "widgets/darkdialog.h"
 #include "widgets/filedialogs.h"
+#include "widgets/toast.h"
+#include "core/flowpath.h"
 #include "widgets/flowcanvas.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFileDialog>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -17,11 +20,24 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QScrollArea>
+#include <QStorageInfo>
 #include <QTime>
 #include <QVBoxLayout>
 
 #include <functional>
 
+namespace {
+
+QString localHumanSize(qint64 bytes)
+{
+    const double kb = 1024.0;
+    if (bytes < kb) return QStringLiteral("%1 B").arg(bytes);
+    if (bytes < kb * kb) return QStringLiteral("%1 KB").arg(bytes / kb, 0, 'f', 0);
+    if (bytes < kb * kb * kb) return QStringLiteral("%1 MB").arg(bytes / (kb * kb), 0, 'f', 1);
+    return QStringLiteral("%1 GB").arg(bytes / (kb * kb * kb), 0, 'f', 1);
+}
+
+} // namespace
 namespace {
 
 QString digitsHint(int digits)
@@ -159,6 +175,55 @@ void BackupPage::refreshRenameChips()
     updateRenamePreview();
 }
 
+// 源/目标信息：文件数、总大小、目标盘剩余空间与是否装得下
+void BackupPage::refreshPathInfo()
+{
+    const QString src = m_sourceEdit->text().trimmed();
+    const QString dst = m_targetEdit->text().trimmed();
+
+    if (src.isEmpty()) {
+        m_sourceInfo->setText(QStringLiteral("尚未选择源文件夹"));
+    } else if (!QDir(src).exists()) {
+        m_sourceInfo->setText(QStringLiteral("源文件夹不存在"));
+    } else {
+        qint64 totalBytes = 0;
+        int fileCount = 0;
+        QDirIterator it(src, QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            ++fileCount;
+            totalBytes += it.fileInfo().size();
+            if (fileCount > 200000)
+                break;
+        }
+        m_sourceInfo->setText(QStringLiteral("识别到 %1 个文件 · 共 %2")
+                                  .arg(fileCount).arg(localHumanSize(totalBytes)));
+
+        if (!dst.isEmpty()) {
+            QStorageInfo storage(dst);
+            if (storage.isValid() && storage.isReady()) {
+                const qint64 freeBytes = storage.bytesAvailable();
+                const bool enough = freeBytes > totalBytes + 64LL * 1024 * 1024;
+                m_targetInfo->setText(
+                    QStringLiteral("目标盘剩余 %1 · 需要 %2 · %3")
+                        .arg(localHumanSize(freeBytes), localHumanSize(totalBytes),
+                             enough ? QStringLiteral("空间充足")
+                                    : QStringLiteral("空间不足，请清理或换盘")));
+                return;
+            }
+        }
+    }
+
+    if (dst.isEmpty()) {
+        m_targetInfo->setText(QStringLiteral("尚未选择目标文件夹"));
+    } else {
+        QStorageInfo storage(dst);
+        m_targetInfo->setText(storage.isValid() && storage.isReady()
+                                  ? QStringLiteral("目标盘剩余 %1").arg(localHumanSize(storage.bytesAvailable()))
+                                  : QStringLiteral("目标路径不可用"));
+    }
+}
+
 void BackupPage::updateRenamePreview()
 {
     if (!m_renamePreview)
@@ -286,7 +351,9 @@ void BackupPage::setupUI()
     // 源文件夹
     auto *srcGroup = new SquircleGroupBox("源文件夹（相机 DCIM）", content);
     m_sourceGroup = srcGroup;
-    auto *srcLayout = new QHBoxLayout(srcGroup);
+    auto *srcOuter = new QVBoxLayout(srcGroup);
+    srcOuter->setSpacing(6);
+    auto *srcLayout = new QHBoxLayout();
     m_sourceEdit = new QLineEdit(srcGroup);
     m_sourceEdit->setPlaceholderText("选择相机存储卡的 DCIM 文件夹，会递归备份里面的所有照片 / 视频");
     auto *srcBtn = new QPushButton("浏览", srcGroup);
@@ -294,12 +361,18 @@ void BackupPage::setupUI()
     connect(srcBtn, &QPushButton::clicked, this, &BackupPage::browseSource);
     srcLayout->addWidget(m_sourceEdit);
     srcLayout->addWidget(srcBtn);
+    srcOuter->addLayout(srcLayout);
+    m_sourceInfo = new QLabel(srcGroup);
+    m_sourceInfo->setObjectName("hintLabel");
+    srcOuter->addWidget(m_sourceInfo);
     layout->addWidget(srcGroup);
 
     // 目标文件夹
     auto *dstGroup = new SquircleGroupBox("目标文件夹（本地磁盘）", content);
     m_targetGroup = dstGroup;
-    auto *dstLayout = new QHBoxLayout(dstGroup);
+    auto *dstOuter = new QVBoxLayout(dstGroup);
+    dstOuter->setSpacing(6);
+    auto *dstLayout = new QHBoxLayout();
     m_targetEdit = new QLineEdit(dstGroup);
     m_targetEdit->setPlaceholderText("例如 D:\\Cjibackup");
     auto *dstBtn = new QPushButton("浏览", dstGroup);
@@ -307,7 +380,14 @@ void BackupPage::setupUI()
     connect(dstBtn, &QPushButton::clicked, this, &BackupPage::browseTarget);
     dstLayout->addWidget(m_targetEdit);
     dstLayout->addWidget(dstBtn);
+    dstOuter->addLayout(dstLayout);
+    m_targetInfo = new QLabel(dstGroup);
+    m_targetInfo->setObjectName("hintLabel");
+    dstOuter->addWidget(m_targetInfo);
     layout->addWidget(dstGroup);
+
+    connect(m_sourceEdit, &QLineEdit::textChanged, this, [this]() { refreshPathInfo(); });
+    connect(m_targetEdit, &QLineEdit::textChanged, this, [this]() { refreshPathInfo(); });
 
     // 分类流程图
     auto *flowGroup = new SquircleGroupBox("分类流程图（把分类项拖进画布，从左到右决定文件夹层级）", content);
@@ -317,12 +397,42 @@ void BackupPage::setupUI()
 
     auto *flowHint = new QLabel(
         "把上方分类项拖进画布（也可双击直接添加），从左到右依次生成多级文件夹；"
+        "把一个节点拖到另一个节点上可以合并成一层文件夹，双击合并节点能改分隔符；"
         "右键拖动两个节点可以改连线，只有从左到右有效，未连线的分类项不会生成文件夹。",
         flowGroup);
     flowHint->setObjectName("hintLabel");
     flowHint->setWordWrap(true);
     flowLayout->addWidget(flowHint);
 
+    // 日期分隔符：年月日合并成一个文件夹时用，可改 . - _ 空格 或自定义
+    {
+        auto *sepRow = new QHBoxLayout();
+        auto *sepLabel = new QLabel("日期分隔符", flowGroup);
+        sepLabel->setObjectName("settingLabel");
+        auto *sepCombo = new QComboBox(flowGroup);
+        sepCombo->setObjectName(QStringLiteral("dateSep"));
+        sepCombo->addItem("- 连字符", "-");
+        sepCombo->addItem(". 点", ".");
+        sepCombo->addItem("_ 下划线", "_");
+        sepCombo->addItem("空格", " ");
+        m_dateSep = sepCombo;
+        const QString cur = SettingsManager::instance()->pathSeparator();
+        const int idx = sepCombo->findData(cur);
+        sepCombo->setCurrentIndex(idx < 0 ? 0 : idx);
+        FlowPath::setSeparator(cur);
+        connect(sepCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, sepCombo]() {
+            const QString sep = sepCombo->currentData().toString();
+            SettingsManager::instance()->setPathSeparator(sep);
+            FlowPath::setSeparator(sep);
+            if (m_flow)
+                m_flow->refreshPreview();
+            updateRenamePreview();
+        });
+        sepRow->addWidget(sepLabel);
+        sepRow->addWidget(sepCombo);
+        sepRow->addStretch();
+        flowLayout->addLayout(sepRow);
+    }
     m_flow = new FlowCanvas(flowGroup);
     flowLayout->addWidget(m_flow);
 
@@ -335,11 +445,12 @@ void BackupPage::setupUI()
     auto *optGroup = new SquircleGroupBox("其他选项", content);
     auto *optLayout = new QVBoxLayout(optGroup);
 
-    m_renameCheck = new QCheckBox("自动重命名文件（前缀 / 序号 / 自定义内容可双击上面的胶囊修改）", optGroup);
+    m_renameCheck = new QCheckBox(QStringLiteral("自动重命名文件"), optGroup);
+    m_renameCheck->setToolTip(QStringLiteral("前缀 / 序号 / 自定义内容可以在上面的胶囊里双击修改"));
     connect(m_renameCheck, &QCheckBox::toggled, this, [this](bool) { updateRenamePreview(); });
     optLayout->addWidget(m_renameCheck);
 
-    m_formatCheck = new QCheckBox("备份完成后格式化存储卡（校验通过后由你手动确认）", optGroup);
+    m_formatCheck = new QCheckBox("备份完成后格式化存储卡", optGroup);
     optLayout->addWidget(m_formatCheck);
 
     m_multithreadCheck = new QCheckBox("多线程加速传输", optGroup);
@@ -495,8 +606,16 @@ void BackupPage::togglePause()
 
 void BackupPage::stopBackup()
 {
-    if (DarkDialog::question(this, "确认", "确定要终止当前备份吗？", "终止备份", "继续备份"))
-        m_engine->stop();
+    if (!DarkDialog::confirmTwice(this, QStringLiteral("终止备份"),
+                                  QStringLiteral("现在中断的话，已经拷过去的文件会保留，没拷完的不会继续。\n"
+                                                 "确定要终止当前备份吗？"),
+                                  QStringLiteral("终止备份"))) {
+        return;
+    }
+
+    m_engine->stop();
+    Toast::showToast(QStringLiteral("已终止备份"),
+                     QStringLiteral("已经拷过去的文件会留在目标文件夹里"), Toast::Warning, 8000);
 }
 
 void BackupPage::onProgress(const BackupStats &stats)
@@ -557,13 +676,14 @@ void BackupPage::onCompleted()
     }
 
     if (verify.ran) {
-        verifiedOk = (verify.missing == 0);
+        verifiedOk = (verify.missing == 0 && verify.corrupt == 0);
         if (verifiedOk) {
             m_noticeLabel->setText(
-                QString("校验通过：%1 个文件全部完整").arg(verify.checked));
+                QString("校验通过（SHA-256）：%1 个文件内容一致").arg(verify.checked));
         } else {
             m_noticeLabel->setText(
-                QString("校验发现 %1 个文件缺失或不完整").arg(verify.missing));
+                QString("校验发现 %1 个缺失、%2 个内容不一致")
+                    .arg(verify.missing).arg(verify.corrupt));
             const bool retry = stats.copiedFiles > 0 && DarkDialog::question(
                 this, "校验未通过",
                 QString("有 %1 个文件没有完整拷贝到目标目录。\n"
@@ -591,12 +711,13 @@ void BackupPage::onCompleted()
 
     if (m_formatCheck->isChecked() && verifiedOk
         && SettingsManager::instance()->openFormatDialog()) {
-        const bool openDialog = DarkDialog::question(
-            this, "校验通过",
-            QString("全部文件已校验完整。\n\n要现在打开 Windows 的格式化界面吗？\n"
-                    "会打开 %1 的格式化窗口，是否格式化由你点确认，软件不会替你格式化。")
+        const bool openDialog = DarkDialog::confirmTwice(
+            this, QStringLiteral("校验通过"),
+            QStringLiteral("全部文件已校验完整。\n\n"
+                           "要现在打开 %1 的 Windows 格式化界面吗？\n"
+                           "是否格式化由你在系统窗口里点确认，软件不会替你格式化。")
                 .arg(WinUtils::driveDescription(src)),
-            "打开格式化界面", "暂不格式化");
+            QStringLiteral("打开格式化界面"));
         if (openDialog) {
             const int ret = WinUtils::openFormatDialog(src, this);
             if (ret == -99)

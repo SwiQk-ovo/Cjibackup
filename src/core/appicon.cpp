@@ -29,7 +29,7 @@ QPixmap logoPixmap(int size)
     // 底板：最初的蓝色渐变
     QLinearGradient gradient(body.topLeft(), body.bottomRight());
     gradient.setColorAt(0.0, QColor(0x60, 0xA5, 0xFA));
-    gradient.setColorAt(0.5, QColor(0x3B, 0x82, 0xF6));
+    gradient.setColorAt(0.5, QColor(0x4C, 0x8D, 0xFF));
     gradient.setColorAt(1.0, QColor(0x1D, 0x4E, 0xD8));
 
     painter.setPen(Qt::NoPen);
@@ -79,7 +79,7 @@ QPixmap logoPixmap(int size)
                                     card.top() + cardH * 0.30,
                                     notchW, notchH),
                              notchH * 0.22, notchH * 0.22);
-        painter.setBrush(QColor(0x3B, 0x82, 0xF6));
+        painter.setBrush(QColor(0x4C, 0x8D, 0xFF));
         painter.drawPath(notch);
     }
 
@@ -87,7 +87,7 @@ QPixmap logoPixmap(int size)
     const QRectF label(card.left() + cardW * 0.16,
                        card.top() + cardH * 0.16,
                        cardW * 0.68, cardH * 0.40);
-    painter.setBrush(QColor(0x3B, 0x82, 0xF6));
+    painter.setBrush(QColor(0x4C, 0x8D, 0xFF));
     painter.drawRoundedRect(label, cardW * 0.07, cardW * 0.07);
 
     // 标签上的一条印刷线（白色，很淡）
@@ -99,7 +99,7 @@ QPixmap logoPixmap(int size)
                             cardH * 0.022, cardH * 0.022);
 
     // 底部触点：一排小竖条
-    painter.setBrush(QColor(0x3B, 0x82, 0xF6));
+    painter.setBrush(QColor(0x4C, 0x8D, 0xFF));
     const int contacts = 6;
     const qreal gap = cardW * 0.055;
     const qreal barW = (cardW * 0.68 - gap * (contacts - 1)) / contacts;

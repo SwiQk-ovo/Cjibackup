@@ -44,28 +44,43 @@ SettingsPage::SettingsPage(QWidget *parent)
 QWidget *SettingsPage::makeRow(const QString &label, QWidget *control, const QString &help)
 {
     auto *row = new QWidget(this);
+    row->setObjectName(QStringLiteral("settingRow"));
+    row->setStyleSheet(QStringLiteral("QWidget#settingRow { background: transparent; }"));
     auto *layout = rowLayout(row);
 
+    // 参考系统设置：标题在左，控件靠右，帮助图标跟在控件后面
     auto *name = new QLabel(label, row);
-    name->setMinimumWidth(96);
+    name->setObjectName(QStringLiteral("settingLabel"));
+    name->setMinimumWidth(120);
     layout->addWidget(name);
+    layout->addStretch(1);
     layout->addWidget(control);
 
     if (!help.isEmpty())
         layout->addWidget(new HelpIcon(help, row));
-
-    layout->addStretch();
     return row;
 }
 
 QWidget *SettingsPage::makeCheckRow(QCheckBox *check, const QString &help)
 {
     auto *row = new QWidget(this);
+    row->setObjectName(QStringLiteral("settingRow"));
+    row->setStyleSheet(QStringLiteral("QWidget#settingRow { background: transparent; }"));
     auto *layout = rowLayout(row);
+
+    // 和下拉框 / 输入框一样：标题在左，控件靠右，帮助图标在同一列
+    auto *name = new QLabel(check->text(), row);
+    name->setObjectName(QStringLiteral("settingLabel"));
+    name->setMinimumWidth(120);
+    layout->addWidget(name);
+    layout->addStretch(1);
+
+    check->setText(QString());
+    check->setCursor(Qt::PointingHandCursor);
     layout->addWidget(check);
+
     if (!help.isEmpty())
         layout->addWidget(new HelpIcon(help, row));
-    layout->addStretch();
     return row;
 }
 
@@ -101,6 +116,12 @@ void SettingsPage::setupUI()
     auto *generalLayout = new QVBoxLayout(generalGroup);
     generalLayout->setSpacing(10);
 
+    {
+        auto *hint = new QLabel("关窗口和开机时的行为。", generalGroup);
+        hint->setObjectName("hintLabel");
+        generalLayout->addWidget(hint);
+    }
+
     m_exitCombo = new QComboBox(generalGroup);
     m_exitCombo->addItems({"最小化到系统托盘", "直接退出程序"});
     m_exitCombo->setCurrentIndex(qBound(0, sm->exitBehavior(), 1));
@@ -112,14 +133,6 @@ void SettingsPage::setupUI()
         "关闭窗口时：最小化到托盘＝程序缩到右下角继续运行，定时提醒才会生效；"
         "直接退出＝关掉窗口就结束进程。"));
 
-    m_notifyCheck = new QCheckBox("备份完成时弹出提示", generalGroup);
-    m_notifyCheck->setChecked(sm->notifyOnComplete());
-    connect(m_notifyCheck, &QCheckBox::toggled, this, [](bool v) {
-        SettingsManager::instance()->setNotifyOnComplete(v);
-    });
-    generalLayout->addWidget(makeCheckRow(
-        m_notifyCheck, "备份结束后在屏幕右下角弹出提示卡片，就算主界面最小化了也能看到结果。"));
-
     m_startMinCheck = new QCheckBox("启动时直接最小化到托盘", generalGroup);
     m_startMinCheck->setChecked(sm->startMinimized());
     connect(m_startMinCheck, &QCheckBox::toggled, this, [](bool v) {
@@ -130,10 +143,16 @@ void SettingsPage::setupUI()
 
     layout->addWidget(generalGroup);
 
-    /* ---------------- 性能与命名 ---------------- */
-    auto *perfGroup = new SquircleGroupBox("性能与命名", content);
+    /* ---------------- 性能 ---------------- */
+    auto *perfGroup = new SquircleGroupBox("性能", content);
     auto *perfLayout = new QVBoxLayout(perfGroup);
     perfLayout->setSpacing(10);
+
+    {
+        auto *hint = new QLabel("拷贝速度、线程数和界面动画的手感。", perfGroup);
+        hint->setObjectName("hintLabel");
+        perfLayout->addWidget(hint);
+    }
 
     m_multithreadCheck = new QCheckBox("多线程加速传输", perfGroup);
     m_multithreadCheck->setChecked(sm->multithread());
@@ -171,19 +190,9 @@ void SettingsPage::setupUI()
         auto *speedLayout = rowLayout(speedRow);
         speedLayout->addWidget(m_animSlider);
         speedLayout->addWidget(m_animValue);
-        speedLayout->addStretch();
         perfLayout->addWidget(makeRow(
             "动画倍速", speedRow, "界面动画和流程图节点重排的速度，1.0x 是默认手感。"));
     }
-
-    // 重命名规则挪到备份页的胶囊区（v1.1.0），这里只留一句指路
-    auto *renameHint = new QLabel(
-        "重命名规则在「备份」页设置：流程图下方有三个胶囊（前缀 / 序号 / 自定义内容），"
-        "双击即可修改，右侧会实时显示 IMG0001 这样的预览。",
-        perfGroup);
-    renameHint->setObjectName("hintLabel");
-    renameHint->setWordWrap(true);
-    perfLayout->addWidget(renameHint);
 
     layout->addWidget(perfGroup);
 
@@ -191,6 +200,12 @@ void SettingsPage::setupUI()
     auto *verifyGroup = new SquircleGroupBox("备份校验", content);
     auto *verifyLayout = new QVBoxLayout(verifyGroup);
     verifyLayout->setSpacing(10);
+
+    {
+        auto *hint = new QLabel("备份完成后怎么检查，以及文件名规则在哪里改。", verifyGroup);
+        hint->setObjectName("hintLabel");
+        verifyLayout->addWidget(hint);
+    }
 
     m_verifyCheck = new QCheckBox("备份完成后校验文件完整性", verifyGroup);
     m_verifyCheck->setChecked(sm->verifyAfterBackup());
@@ -210,12 +225,27 @@ void SettingsPage::setupUI()
         "校验全部通过才会拉起 Windows 自带的格式化窗口，是否格式化、点不点开始都由你决定，"
         "软件绝不会自己格式化存储卡。"));
 
+    // 重命名规则挪到备份页的胶囊区（v1.1.0），这里只留一句指路
+    auto *renameHint = new QLabel(
+        "重命名规则在「备份」页设置：流程图下方有三个胶囊（前缀 / 序号 / 自定义内容），"
+        "双击即可修改，右侧会实时显示 IMG0001 这样的预览。",
+        verifyGroup);
+    renameHint->setObjectName("hintLabel");
+    renameHint->setWordWrap(true);
+    verifyLayout->addWidget(renameHint);
+
     layout->addWidget(verifyGroup);
 
     /* ---------------- 启动动画 ---------------- */
     auto *splashGroup = new SquircleGroupBox("启动动画与音效", content);
     auto *splashLayout = new QVBoxLayout(splashGroup);
     splashLayout->setSpacing(10);
+
+    {
+        auto *hint = new QLabel("开场的动画、动图和声音。", splashGroup);
+        hint->setObjectName("hintLabel");
+        splashLayout->addWidget(hint);
+    }
 
     m_splashCheck = new QCheckBox("启用启动动画", splashGroup);
     m_splashCheck->setChecked(sm->splashEnabled());
@@ -228,8 +258,9 @@ void SettingsPage::setupUI()
 
     m_fastStartCheck = new QCheckBox("快速启动模式（跳过动画与音效）", splashGroup);
     m_fastStartCheck->setChecked(sm->fastStart());
-    connect(m_fastStartCheck, &QCheckBox::toggled, this, [](bool v) {
+    connect(m_fastStartCheck, &QCheckBox::toggled, this, [this](bool v) {
         SettingsManager::instance()->setFastStart(v);
+        syncSplashWidgets();   // 快速启动勾上 → 其它启动动画选项全部置灰
     });
     splashLayout->addWidget(makeCheckRow(
         m_fastStartCheck, "勾上之后直接进主界面，不播动画也不放音效。"));
@@ -333,10 +364,24 @@ void SettingsPage::setupUI()
 
     layout->addWidget(splashGroup);
 
-    /* ---------------- 定时提醒 ---------------- */
-    auto *reminderGroup = new SquircleGroupBox("定时备份提醒", content);
+    /* ---------------- 提醒 ---------------- */
+    auto *reminderGroup = new SquircleGroupBox("提醒", content);
     auto *reminderLayout = new QVBoxLayout(reminderGroup);
     reminderLayout->setSpacing(10);
+
+    {
+        auto *hint = new QLabel("备份完成后的提示，以及到点叫你备份。", reminderGroup);
+        hint->setObjectName("hintLabel");
+        reminderLayout->addWidget(hint);
+    }
+
+    m_notifyCheck = new QCheckBox("备份完成时弹出提示", reminderGroup);
+    m_notifyCheck->setChecked(sm->notifyOnComplete());
+    connect(m_notifyCheck, &QCheckBox::toggled, this, [](bool v) {
+        SettingsManager::instance()->setNotifyOnComplete(v);
+    });
+    reminderLayout->addWidget(makeCheckRow(
+        m_notifyCheck, "备份结束后在屏幕右下角弹出提示卡片，就算主界面最小化了也能看到结果。"));
 
     m_reminderCheck = new QCheckBox("到点提醒我备份", reminderGroup);
     m_reminderCheck->setChecked(sm->reminderEnabled());
@@ -399,6 +444,12 @@ void SettingsPage::setupUI()
     auto *updateLayout = new QVBoxLayout(updateGroup);
     updateLayout->setSpacing(10);
 
+    {
+        auto *hint = new QLabel("检查新版本和选择升级通道。", updateGroup);
+        hint->setObjectName("hintLabel");
+        updateLayout->addWidget(hint);
+    }
+
     m_autoUpdateCheck = new QCheckBox("启动时自动检查更新", updateGroup);
     m_autoUpdateCheck->setChecked(sm->autoCheckUpdates());
     connect(m_autoUpdateCheck, &QCheckBox::toggled, this, [](bool v) {
@@ -457,9 +508,12 @@ void SettingsPage::setupUI()
 void SettingsPage::syncSplashWidgets()
 {
     SettingsManager *sm = SettingsManager::instance();
-    const bool enabled = sm->splashEnabled();
+    // 快速启动 = 整体跳过动画与音效：主开关置灰，其余全部跟着禁用
+    const bool fast = m_fastStartCheck && m_fastStartCheck->isChecked();
+    const bool enabled = sm->splashEnabled() && !fast;
     const bool custom = (m_splashPreset->currentData().toString() == QStringLiteral("custom"));
 
+    m_splashCheck->setEnabled(!fast);
     m_splashPreset->setEnabled(enabled);
     m_splashDuration->setEnabled(enabled);
     m_splashMedia->setEnabled(enabled && custom);

@@ -2,6 +2,7 @@
 #define FLOWCANVAS_H
 
 #include <QLabel>
+#include <QPair>
 #include <QPointer>
 #include <QWidget>
 #include <QGraphicsObject>
@@ -14,6 +15,8 @@
 #include <QString>
 #include <QStringList>
 #include <QVector>
+
+#include "core/flowpath.h"
 
 class QLabel;
 class QTimer;
@@ -45,18 +48,28 @@ struct FlowPaletteItem
 QVector<FlowPaletteItem> flowPaletteItems();
 const FlowPaletteItem *flowPaletteItem(const QString &key);
 
-/** 画布上的分类节点 */
+/** 画布上的分类节点（单个分类项，或几个分类项合并成的一个节点） */
 class FlowNodeItem : public QGraphicsObject
 {
     Q_OBJECT
 
 public:
     FlowNodeItem(const QString &key, const QString &text, QGraphicsItem *parent = nullptr);
+    FlowNodeItem(const QVector<FlowPath::Item> &members, const QString &separator,
+                 QGraphicsItem *parent = nullptr);
 
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
     bool isDragging() const { return m_dragging; }
+
+    // 合并节点
+    bool isMerged() const { return m_merged; }
+    QVector<FlowPath::Item> members() const;
+    QString separator() const { return m_sep; }
+    void setSeparator(const QString &sep);
+    void setMemberText(int index, const QString &text);
+    QStringList sampleParts() const;   // 合并节点预览用（2026 / 10 / 31）
 
     QString key() const { return m_key; }
     QString text() const { return m_text; }
@@ -81,12 +94,18 @@ protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) override;
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
 
 private:
+    void initItem();
+
     QString m_key;
     QString m_text;
+    QVector<FlowPath::Item> m_members;   // 合并节点的成员；空 = 单个节点
+    QString m_sep = QStringLiteral("-");
+    bool m_merged = false;
     int m_level = 0;
     bool m_active = true;
     bool m_hovered = false;
@@ -113,8 +132,15 @@ public:
     // 由 FlowNodeItem 在拖动结束时调用
     void finishNodeDrag(FlowNodeItem *node);
 
+    // 双击合并节点 / 右键菜单：改分隔符
+    void editMergedSeparator(FlowNodeItem *node);
+    // 拆开合并节点（右键菜单 / 测试用）
+    void unmergeNode(FlowNodeItem *node);
+
     // 从分类项面板插入一个节点；level < 0 表示追加到末尾
     void insertFromPalette(const QString &key, int level);
+    // 从分类项面板直接拖到某个节点身上：合并进这个节点
+    void addPaletteItemToNode(const QString &key, FlowNodeItem *target, bool before);
 
 signals:
     void changed();
@@ -136,9 +162,16 @@ protected:
 
 private:
     FlowNodeItem *nodeAt(const QPointF &scenePos) const;
+    FlowNodeItem *mergeTargetAt(FlowNodeItem *node) const;
+    void updateDropIndicator(const QPointF &scenePos);
     int levelForX(qreal x) const;
 
     void insertNode(const QString &key, const QString &text, int level);
+    void appendMergedNode(const QVector<FlowPath::Item> &members, const QString &separator);
+    void mergeNodes(FlowNodeItem *dragged, FlowNodeItem *target);
+    void removeNodeWithConfirm(FlowNodeItem *node);
+    void restoreLinks(const QVector<QPair<int, int>> &links);
+    void relinkByOrder();
     void removeNode(FlowNodeItem *node);
     void reindex();
     void relayout(bool animate);
@@ -170,6 +203,7 @@ private:
     bool m_suppressContextMenu = false;
 
     int m_dropLevel = -1;
+    FlowNodeItem *m_dropTarget = nullptr;   // 拖分类项时悬停的节点（松手就合并进去）
     qreal m_pitch = 138.0;
 };
 
@@ -223,6 +257,11 @@ public:
     QStringList flowConfig() const;
     void setFlowConfig(const QStringList &config);
     void clearAll();
+    // 恢复一份流程配置并通知外部保存（撤销用）
+    void restoreConfig(const QStringList &config);
+
+    // 全局日期分隔符变了：只刷新目录预览，不动画布
+    void refreshPreview();
 
     // 相机型号节点 / 目录预览里显示的型号（选完源目录后传入真实型号）
     void setCameraModelHint(const QString &model);
@@ -231,6 +270,9 @@ public:
 
     // 弹出对话框获取事件名 / 自定义文本（供场景调用）
     bool askNodeText(const QString &key, const QString &initial, QString *text);
+    // 弹出分隔符选择框（合并节点用）
+    bool askMergeSeparator(const QString &initial, const QStringList &sampleParts,
+                           QString *separator);
 
 signals:
     void flowChanged(const QStringList &config);

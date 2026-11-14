@@ -20,6 +20,7 @@ private slots:
 
 private:
     void updateEmptyState();
+    void refreshFromSettings();
 
     QLineEdit *m_input = nullptr;
     QListWidget *m_list = nullptr;

@@ -454,7 +454,7 @@ void SplashWindow::paintText(QPainter &painter, const QRectF &card, qreal progre
     const QRectF subRect(card.left(), card.top() + 216, card.width(), 20);
 
     QFont titleFont = font();
-    titleFont.setPixelSize(22);
+    titleFont.setPixelSize(18);
     titleFont.setBold(true);
     titleFont.setFamily(QStringLiteral("Microsoft YaHei UI"));
     titleFont.setLetterSpacing(QFont::AbsoluteSpacing, 2.0);

@@ -13,6 +13,7 @@ class QFrame;
 class SquircleCard;
 class QLabel;
 class QPushButton;
+class QProgressBar;
 class QScrollArea;
 class QVBoxLayout;
 class UpdateManager;
@@ -22,7 +23,8 @@ class UpdateManager;
  *   顶部：图标 + 标题 / 副标题 + 右上角关闭
  *   两张横幅卡片：当前版本 / 更新通道
  *   状态条：发现可用更新 / 已是新版 + 当前版本小药丸
- *   正式版本、预发布版本两张卡片：版本号 + 立即升级 + 可滚动的更新说明
+ *   版本卡片：只显示设置里选中的通道；正式版和预发布版都有更新时两张卡各占一半、
+ *            各自独立滚动；更新说明按「新增 / 调整 / 修复」分组逐条列出
  */
 class UpdateDialog : public QDialog
 {
@@ -70,15 +72,22 @@ private:
     void applyReleases(const QVector<UpdateRelease> &releases);
     void applyFailure(const QString &error);
     void fillChannel(ChannelCard &card, bool prerelease, const QVector<UpdateRelease> &releases);
-    void fillNotes(ChannelCard &card, const QStringList &notes);
+    void fillNotes(ChannelCard &card, const QVector<UpdateNote> &notes);
+    // 只显示对应通道；正式 + 预发布都有更新时两张卡各占一半、各自滚动
+    void syncChannelLayout();
+    // 下载安装包时的进度条（不下载时整条隐藏）
+    void setDownloadProgress(qint64 received, qint64 total);
+    void hideDownloadProgress();
     void installFrom(ChannelCard &card);
     void showDemoReleases();
 
     UpdateManager *m_manager = nullptr;
+    QVBoxLayout *m_root = nullptr;
 
     QLabel *m_statusText = nullptr;
     QLabel *m_statusChip = nullptr;
     QWidget *m_bellWidget = nullptr;   // BellGlyph，只在 .cpp 里定义
+    QProgressBar *m_progress = nullptr;
     QPushButton *m_refreshBtn = nullptr;
     QPushButton *m_pageBtn = nullptr;
 

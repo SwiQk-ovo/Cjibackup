@@ -31,6 +31,13 @@ public:
     static void warning(QWidget *parent, const QString &title, const QString &text);
     static void critical(QWidget *parent, const QString &title, const QString &text);
 
+    /**
+     * 危险操作二次确认：第一次是普通问询；第二次确认按钮换到左边、窗口整体错开，
+     * 避免手快连点两下就把危险操作点过去。
+     */
+    static bool confirmTwice(QWidget *parent, const QString &title, const QString &text,
+                             const QString &okText = QStringLiteral("继续"));
+
     // 带「在浏览器中查看」按钮的提示
     static void informationWithLink(QWidget *parent, const QString &title, const QString &text,
                                     const QString &linkText, const QUrl &url);
@@ -41,7 +48,8 @@ public:
 
 private:
     explicit DarkDialog(QWidget *parent, Kind kind, const QString &title, const QString &text);
-    void addButtons(const QString &okText, const QString &cancelText, bool hasCancel);
+    void addButtons(const QString &okText, const QString &cancelText, bool hasCancel,
+                    bool shiftPrimary = false);
 
     Kind m_kind = Info;
     QLabel *m_textLabel = nullptr;

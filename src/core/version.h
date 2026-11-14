@@ -6,19 +6,19 @@
 namespace Cji {
 
 // 版本号只在这里改，安装包 / 关于页 / 更新检查都读这里
-inline constexpr int Major = 1;
+inline constexpr int Major = 2;
 inline constexpr int Minor = 1;
-inline constexpr int Patch = 5;
+inline constexpr int Patch = 0;
 inline constexpr bool TestBuild = false;
 
 inline QString versionNumber()
 {
-    return QStringLiteral("1.1.5");
+    return QStringLiteral("2.1.0");
 }
 
 inline QString versionLabel()
 {
-    return QStringLiteral("正式版 v1.1.5");
+    return QStringLiteral("正式版 v2.1.0");
 }
 
 } // namespace Cji

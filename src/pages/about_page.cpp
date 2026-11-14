@@ -47,7 +47,7 @@ protected:
         QFont f = font();
         f.setUnderline(false);
         setFont(f);
-        setStyleSheet(QStringLiteral("color:#3B82F6;"));
+        setStyleSheet(QStringLiteral("color:#4C8DFF;"));
     }
 
     void mouseReleaseEvent(QMouseEvent *event) override
@@ -125,7 +125,7 @@ AboutPage::AboutPage(QWidget *parent)
     links->setAlignment(Qt::AlignCenter);
 
     auto *bili = new QLabel(
-        "<a href='https://space.bilibili.com/3493116898183194' style='color:#3B82F6;'>B站主页</a>",
+        "<a href='https://space.bilibili.com/3493116898183194' style='color:#4C8DFF;'>B站主页</a>",
         this);
     bili->setOpenExternalLinks(true);
     links->addWidget(bili);
@@ -135,7 +135,7 @@ AboutPage::AboutPage(QWidget *parent)
     links->addWidget(dot);
 
     auto *github = new QLabel(
-        "<a href='https://github.com/SwiQk-ovo/Cjibackup' style='color:#3B82F6;'>GitHub 仓库</a>",
+        "<a href='https://github.com/SwiQk-ovo/Cjibackup' style='color:#4C8DFF;'>GitHub 仓库</a>",
         this);
     github->setOpenExternalLinks(true);
     links->addWidget(github);

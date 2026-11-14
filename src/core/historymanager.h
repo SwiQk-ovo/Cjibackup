@@ -30,6 +30,8 @@ public:
     QVector<HistoryRecord> records() const;
     void addRecord(const HistoryRecord &record);
     void clearAll();
+    // 撤销「清空记录」用：整份写回
+    void setRecords(const QVector<HistoryRecord> &records);
 
 signals:
     void recordsChanged();

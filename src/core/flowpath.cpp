@@ -1,9 +1,99 @@
 #include "flowpath.h"
 
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QStringList>
 
 namespace FlowPath {
+
+namespace {
+
+QString entryText(const Item &item)
+{
+    const QString key = keyName(item.key);
+    if (item.key == Key::Event || item.key == Key::Custom)
+        return key + QLatin1Char(':') + item.text;
+    return key;
+}
+
+bool decodeGroup(const QString &payload, QString *sep, QStringList *entries)
+{
+    if (!sep || !entries)
+        return false;
+
+    QJsonParseError error{};
+    const QJsonDocument doc = QJsonDocument::fromJson(payload.toUtf8(), &error);
+    if (error.error != QJsonParseError::NoError || !doc.isObject())
+        return false;
+
+    const QJsonObject object = doc.object();
+    QString value = object.value(QStringLiteral("sep")).toString();
+    if (value.isEmpty())
+        value = QStringLiteral("-");
+
+    QStringList list;
+    for (const QJsonValue &item : object.value(QStringLiteral("items")).toArray()) {
+        const QString entry = item.toString();
+        if (!entry.isEmpty())
+            list << entry;
+    }
+    if (list.isEmpty())
+        return false;
+
+    *sep = value;
+    *entries = list;
+    return true;
+}
+
+void appendEntries(const QStringList &entries, const QString &joinSep, int groupId,
+                   QVector<Item> *items)
+{
+    if (!items)
+        return;
+
+    for (const QString &entry : entries) {
+        const int sep = entry.indexOf(QLatin1Char(':'));
+        const QString keyPart = sep < 0 ? entry : entry.left(sep);
+        const QString textPart = sep < 0 ? QString() : entry.mid(sep + 1);
+
+        // 合并节点里又套了一层合并：直接拍平，成员用外层的分隔符
+        if (keyPart.trimmed().compare(QLatin1String("merge"), Qt::CaseInsensitive) == 0) {
+            QString innerSep;
+            QStringList innerEntries;
+            if (decodeGroup(textPart, &innerSep, &innerEntries))
+                appendEntries(innerEntries, joinSep, groupId, items);
+            continue;
+        }
+
+        if (keyPart.trimmed().compare(QLatin1String("date"), Qt::CaseInsensitive) == 0) {
+            // 兼容旧版配置：date = 年 / 月 / 日
+            for (Key key : {Key::Year, Key::Month, Key::Day}) {
+                Item item;
+                item.key = key;
+                item.joinSep = joinSep;
+                item.groupId = groupId;
+                items->append(item);
+            }
+            continue;
+        }
+
+        Key key;
+        if (!keyFromName(keyPart, &key))
+            continue;
+
+        Item item;
+        item.key = key;
+        item.joinSep = joinSep;
+        item.groupId = groupId;
+        if (key == Key::Event || key == Key::Custom)
+            item.text = textPart.trimmed();
+        items->append(item);
+    }
+}
+
+} // namespace
 
 QString keyName(Key key)
 {
@@ -40,28 +130,23 @@ bool keyFromName(const QString &name, Key *key)
 QVector<Item> parse(const QStringList &config)
 {
     QVector<Item> items;
+    int nextGroup = 0;
+
     for (const QString &entry : config) {
         const int sep = entry.indexOf(QLatin1Char(':'));
         const QString keyPart = sep < 0 ? entry : entry.left(sep);
         const QString textPart = sep < 0 ? QString() : entry.mid(sep + 1);
 
-        if (keyPart.trimmed().compare(QLatin1String("date"), Qt::CaseInsensitive) == 0) {
-            // 兼容旧版配置：date = 年 / 月 / 日
-            items.append({Key::Year, QString()});
-            items.append({Key::Month, QString()});
-            items.append({Key::Day, QString()});
+        if (keyPart.trimmed().compare(QLatin1String("merge"), Qt::CaseInsensitive) == 0) {
+            QString groupSep;
+            QStringList entries;
+            if (!decodeGroup(textPart, &groupSep, &entries))
+                continue;
+            appendEntries(entries, groupSep, ++nextGroup, &items);
             continue;
         }
 
-        Key key;
-        if (!keyFromName(keyPart, &key))
-            continue;
-
-        Item item;
-        item.key = key;
-        if (key == Key::Event || key == Key::Custom)
-            item.text = textPart.trimmed();
-        items.append(item);
+        appendEntries({entry}, QString(), 0, &items);
     }
     return items;
 }
@@ -69,14 +154,54 @@ QVector<Item> parse(const QStringList &config)
 QStringList serialize(const QVector<Item> &items)
 {
     QStringList out;
-    for (const Item &item : items) {
-        const QString key = keyName(item.key);
-        if (item.key == Key::Event || item.key == Key::Custom)
-            out << key + QLatin1Char(':') + item.text;
-        else
-            out << key;
+    for (int i = 0; i < items.size();) {
+        const Item &item = items.at(i);
+        if (item.joinSep.isEmpty() || item.groupId <= 0) {
+            out << entryText(item);
+            ++i;
+            continue;
+        }
+
+        // 同一个合并节点里的成员是连续的，收成一条 merge: 配置
+        const int groupId = item.groupId;
+        const QString sep = item.joinSep;
+        QJsonArray members;
+        while (i < items.size() && items.at(i).groupId == groupId
+               && !items.at(i).joinSep.isEmpty()) {
+            members.append(entryText(items.at(i)));
+            ++i;
+        }
+
+        QJsonObject object;
+        object.insert(QStringLiteral("sep"), sep);
+        object.insert(QStringLiteral("items"), members);
+        out << QStringLiteral("merge:")
+                   + QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact));
     }
     return out;
+}
+
+QString encodeGroup(const QString &separator, const QStringList &entries)
+{
+    QJsonArray members;
+    for (const QString &entry : entries) {
+        if (!entry.isEmpty())
+            members.append(entry);
+    }
+
+    QJsonObject object;
+    object.insert(QStringLiteral("sep"),
+                  separator.isEmpty() ? QStringLiteral("-") : separator);
+    object.insert(QStringLiteral("items"), members);
+    return QStringLiteral("merge:")
+           + QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact));
+}
+
+bool isMergeEntry(const QString &entry)
+{
+    const int sep = entry.indexOf(QLatin1Char(':'));
+    const QString keyPart = sep < 0 ? entry : entry.left(sep);
+    return keyPart.trimmed().compare(QLatin1String("merge"), Qt::CaseInsensitive) == 0;
 }
 
 bool hasKey(const QStringList &config, Key key)
@@ -123,6 +248,11 @@ QString sanitize(const QString &raw)
     return s;
 }
 
+namespace { QString g_separator = QStringLiteral("-"); }
+
+QString separator() { return g_separator; }
+void setSeparator(const QString &sep) { g_separator = sep.isEmpty() ? QStringLiteral("-") : sep; }
+
 QString relativeDir(const QStringList &config, const QString &fileName, const QDateTime &dt,
                     const QString &cameraModel)
 {
@@ -134,54 +264,93 @@ QString relativeDir(const QStringList &config, const QString &fileName, const QD
     const QString suffix = QFileInfo(fileName).suffix().toUpper();
     QStringList parts;
 
-    // 年月日的写法取决于此前是否已经出现过更粗的分类项：
-    // 年 -> 2026、月 -> 10（前面有年）/ 2026-10、日 -> 31（前面有年月）/ 10-31 / 2026-10-31
-    bool yearSeen = false;
-    bool monthSeen = false;
-
-    for (const Item &item : items) {
-        QString part;
+    auto isDateKey = [](Key key) {
+        return key == Key::Year || key == Key::Month || key == Key::Day;
+    };
+    auto dateOf = [&](Key key) {
+        switch (key) {
+        case Key::Year: return when.toString(QStringLiteral("yyyy"));
+        case Key::Month: return when.toString(QStringLiteral("MM"));
+        default: return when.toString(QStringLiteral("dd"));
+        }
+    };
+    auto pieceFor = [&](const Item &item) -> QString {
         switch (item.key) {
         case Key::Year:
-            part = when.toString(QStringLiteral("yyyy"));
-            yearSeen = true;
-            break;
         case Key::Month:
-            part = yearSeen ? when.toString(QStringLiteral("MM"))
-                            : when.toString(QStringLiteral("yyyy-MM"));
-            monthSeen = true;
-            break;
         case Key::Day:
-            if (yearSeen && monthSeen)
-                part = when.toString(QStringLiteral("dd"));
-            else if (yearSeen || monthSeen)
-                part = when.toString(QStringLiteral("MM-dd"));
-            else
-                part = when.toString(QStringLiteral("yyyy-MM-dd"));
-            break;
+            return dateOf(item.key);
         case Key::Event:
-            part = item.text.isEmpty() ? QStringLiteral("未命名事件") : item.text;
-            break;
+            return item.text.isEmpty() ? QStringLiteral("未命名事件") : item.text;
         case Key::Ext:
-            part = suffix.isEmpty() ? QStringLiteral("OTHER") : suffix;
-            break;
+            return suffix.isEmpty() ? QStringLiteral("OTHER") : suffix;
         case Key::Custom:
-            part = item.text;
-            break;
+            return item.text;
         case Key::Camera:
             // 型号由备份引擎逐文件读 EXIF 后传进来；预览时也会传一个示例型号
-            part = cameraModel.trimmed().isEmpty() ? QStringLiteral("未知相机") : cameraModel;
-            break;
+            return cameraModel.trimmed().isEmpty() ? QStringLiteral("未知相机") : cameraModel;
         case Key::Seq:
             // 序号只参与文件名编号，不生成文件夹
-            break;
+            return QString();
+        }
+        return QString();
+    };
+
+    // 年 / 月 / 日 连续出现（且没有被"合并节点"打断）时合并成一个文件夹，
+    // 用用户设置的全局分隔符连接，顺序完全按用户在流程图里的排列
+    const QString sep = separator();
+    QString datePart;
+    auto flushDate = [&]() {
+        if (!datePart.isEmpty()) {
+            parts.append(datePart);
+            datePart.clear();
+        }
+    };
+
+    // 合并节点：同组的成员用各自的 joinSep 连成一个文件夹
+    int groupId = 0;
+    QString groupSep;
+    QStringList groupParts;
+    auto flushGroup = [&]() {
+        if (groupId > 0) {
+            if (!groupParts.isEmpty())
+                parts.append(groupParts.join(groupSep));
+            groupParts.clear();
+            groupSep.clear();
+            groupId = 0;
+        }
+    };
+
+    for (const Item &item : items) {
+        if (item.groupId > 0 && !item.joinSep.isEmpty()) {
+            flushDate();
+            if (item.groupId != groupId) {
+                flushGroup();
+                groupId = item.groupId;
+                groupSep = item.joinSep;
+            }
+            const QString part = sanitize(pieceFor(item));
+            if (!part.isEmpty())
+                groupParts << part;
+            continue;
         }
 
-        part = sanitize(part);
+        flushGroup();
+        if (isDateKey(item.key)) {
+            // 连续的 年/月/日 合并成一个目录，顺序按用户拖放的先后
+            const QString piece = pieceFor(item);
+            datePart = datePart.isEmpty() ? piece : (datePart + sep + piece);
+            continue;
+        }
+
+        flushDate();
+        const QString part = sanitize(pieceFor(item));
         if (!part.isEmpty())
             parts << part;
     }
 
+    flushDate();
+    flushGroup();
     return parts.join(QLatin1Char('/'));
 }
 

@@ -3,6 +3,7 @@
 #include "widgets/darkdialog.h"
 #include "widgets/squircle.h"
 #include "widgets/appicons.h"
+#include "widgets/toast.h"
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -40,6 +41,7 @@ HistoryPage::HistoryPage(QWidget *parent)
     layout->addLayout(topBar);
 
     auto *listWrap = new QWidget(this);
+    listWrap->setObjectName(QStringLiteral("historyCard"));
     auto *listGrid = new QGridLayout(listWrap);
     listGrid->setContentsMargins(0, 0, 0, 0);
 
@@ -123,9 +125,23 @@ void HistoryPage::refreshList()
 
 void HistoryPage::clearHistory()
 {
-    if (DarkDialog::question(this, "确认", "确定要清空所有备份记录吗？", "清空", "取消")) {
-        HistoryManager::instance()->clearAll();
+    const QVector<HistoryRecord> snapshot = HistoryManager::instance()->records();
+    if (snapshot.isEmpty())
+        return;
+
+    if (!DarkDialog::confirmTwice(
+            this, QStringLiteral("清空备份记录"),
+            QStringLiteral("确定要清空全部 %1 条备份记录吗？").arg(snapshot.size()),
+            QStringLiteral("清空全部"))) {
+        return;
     }
+
+    HistoryManager::instance()->clearAll();
+    Toast::showToast(QStringLiteral("已清空备份记录"),
+                     QStringLiteral("共删除 %1 条记录").arg(snapshot.size()), Toast::Success,
+                     10000, QStringLiteral("撤销"), [snapshot]() {
+                         HistoryManager::instance()->setRecords(snapshot);
+                     });
 }
 
 void HistoryPage::exportCsv()

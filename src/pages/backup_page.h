@@ -7,6 +7,7 @@
 
 #include <QCheckBox>
 #include <QGroupBox>
+#include <QComboBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QProgressBar>
@@ -85,6 +86,11 @@ private:
     // 文件重命名胶囊区
     void refreshRenameChips();
     void updateRenamePreview();
+    void refreshPathInfo();
+
+    QLabel *m_sourceInfo = nullptr;
+    QComboBox *m_dateSep = nullptr;
+    QLabel *m_targetInfo = nullptr;
     void editRenamePrefix();
     void editRenameDigits();
     void editRenameCustom();

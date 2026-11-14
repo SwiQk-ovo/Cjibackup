@@ -4,6 +4,7 @@
 #include "core/settingsmanager.h"
 
 #include <QDateTime>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
@@ -119,6 +120,14 @@ void BackupEngine::start(const QString &source, const QString &target)
         std::atomic<bool> &flag;
         ~StartGuard() { flag = false; }
     } startGuard{m_starting};
+
+    // 每次开跑都清零统计，避免「补拷」二次启动后出现 61/60 这种越界计数
+    {
+        QMutexLocker lock(&m_mutex);
+        m_stats = BackupStats();
+        m_verify = VerifyResult();
+        m_failedFiles.clear();
+    }
 
     // 主线程快照设置：后台线程不再碰 QSettings
     SettingsManager *sm = SettingsManager::instance();
@@ -532,11 +541,23 @@ void BackupEngine::verifyAll()
         const QString dstPath = file.dstPath;
         ++result.checked;
 
+        emit verifyProgress(result.checked, m_plan.size());
+
         const QFileInfo dstInfo(dstPath);
         if (!dstInfo.exists() || dstInfo.size() != file.info.size()) {
             ++result.missing;
             if (result.missingFiles.size() < 200)
                 result.missingFiles << dstPath;
+            continue;
+        }
+
+        // 大小一致还不够：逐文件比对 SHA-256，确认内容一字不差
+        const QString srcHash = sha256Of(file.info.absoluteFilePath());
+        const QString dstHash = sha256Of(dstPath);
+        if (srcHash.isEmpty() || dstHash.isEmpty() || srcHash != dstHash) {
+            ++result.corrupt;
+            if (result.corruptFiles.size() < 200)
+                result.corruptFiles << dstPath;
         }
     }
 
@@ -545,6 +566,25 @@ void BackupEngine::verifyAll()
         m_verify = result;
     }
     emit verified(result);
+}
+
+// 流式读文件算 SHA-256（1MB 一块，不占内存）
+QString BackupEngine::sha256Of(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return QString();
+
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    QByteArray buffer;
+    buffer.resize(1024 * 1024);
+    while (!file.atEnd()) {
+        const qint64 n = file.read(buffer.data(), buffer.size());
+        if (n <= 0)
+            break;
+        hash.addData(QByteArrayView(buffer.constData(), int(n)));
+    }
+    return QString::fromLatin1(hash.result().toHex());
 }
 
 void BackupEngine::runBackup()

@@ -46,6 +46,12 @@ public:
     // 格式化 / 校验
     bool formatAfterBackup() const;
     void setFormatAfterBackup(bool v);
+    QString pathSeparator() const;
+    void setPathSeparator(const QString &sep);
+    // 拖节点合并时，弹窗里上次选的分隔符（首次记住）
+    QString mergeSeparator() const;
+    void setMergeSeparator(const QString &sep);
+
     bool verifyAfterBackup() const;
     void setVerifyAfterBackup(bool v);
     bool openFormatDialog() const;

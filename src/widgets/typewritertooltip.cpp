@@ -35,7 +35,7 @@ TypewriterTooltip::TypewriterTooltip(QWidget *parent)
 
     QFont f = font();
     f.setFamily(QStringLiteral("Microsoft YaHei UI"));
-    f.setPixelSize(13);
+    f.setPixelSize(14);
     setFont(f);
 
     m_timer = new QTimer(this);

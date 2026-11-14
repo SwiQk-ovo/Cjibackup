@@ -32,8 +32,10 @@ struct BackupStats {
 struct VerifyResult {
     bool ran = false;
     int checked = 0;
-    int missing = 0;
-    QStringList missingFiles;
+    int missing = 0;          // 文件不存在 / 大小不符
+    int corrupt = 0;          // 大小对但内容哈希不一致
+    QStringList missingFiles; // 前 200 个有问题的文件
+    QStringList corruptFiles;
 };
 
 // 一个待备份文件的完整计划：源文件 → 目标相对目录 / 文件名。
@@ -85,6 +87,7 @@ signals:
     void fileCopied(const QString &src, const QString &dst);
     void errorOccurred(const QString &message);
     void verified(const VerifyResult &result);
+    void verifyProgress(int done, int total);
     void completed();
 
 private:
@@ -96,6 +99,7 @@ private:
     QString cameraModelFor(const QFileInfo &info);
     QString relativeDirFor(const QFileInfo &info, const QString &cameraFolder) const;
     bool copyFile(const QString &src, const QString &dst);
+    static QString sha256Of(const QString &path);   // 流式算 SHA-256，失败返回空
     bool ensureDir(const QString &dir);
     void emitProgress(bool force);
     QList<QPointer<BackupWorker>> workersSnapshot();

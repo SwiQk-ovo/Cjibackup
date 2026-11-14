@@ -68,37 +68,199 @@ UpdateManager::UpdateManager(QObject *parent)
 {
 }
 
-QStringList UpdateManager::parseReleaseNotes(const QString &raw)
+namespace {
+
+UpdateNoteKind kindFromWord(const QString &word)
 {
-    QStringList lines;
+    if (word.contains(QStringLiteral("修复")) || word.contains(QStringLiteral("修正"))
+        || word.contains(QStringLiteral("解决")) || word.contains(QStringLiteral("fixed"), Qt::CaseInsensitive)
+        || word.contains(QStringLiteral("bug"), Qt::CaseInsensitive))
+        return UpdateNoteKind::Fixed;
+    if (word.contains(QStringLiteral("新增")) || word.contains(QStringLiteral("添加"))
+        || word.contains(QStringLiteral("新功能")) || word.contains(QStringLiteral("功能"))
+        || word.contains(QStringLiteral("feature"), Qt::CaseInsensitive)
+        || word.contains(QStringLiteral("added"), Qt::CaseInsensitive)
+        || word.contains(QStringLiteral("new"), Qt::CaseInsensitive))
+        return UpdateNoteKind::Added;
+    return UpdateNoteKind::Changed;
+}
+
+bool kindFromHeading(const QString &line, UpdateNoteKind *kind)
+{
+    const QString text = line.trimmed();
+    if (!text.startsWith(QLatin1Char('#')))
+        return false;
+
+    QString title = text;
+    while (title.startsWith(QLatin1Char('#')))
+        title.remove(0, 1);
+    title = title.trimmed();
+    if (title.isEmpty())
+        return false;
+
+    // 通用标题（更新内容 / 本次更新 / Release Notes …）不改变当前分类
+    static const QStringList generic = {
+        QStringLiteral("更新内容"), QStringLiteral("本次更新"), QStringLiteral("更新"),
+        QStringLiteral("release"), QStringLiteral("notes"), QStringLiteral("更新说明"),
+    };
+    const QString lower = title.toLower();
+    for (const QString &word : generic) {
+        if (lower == word || lower.contains(word + QStringLiteral(" note")))
+            return false;
+    }
+
+    const bool looksKnown = title.contains(QStringLiteral("新增")) || title.contains(QStringLiteral("添加"))
+                            || title.contains(QStringLiteral("修复")) || title.contains(QStringLiteral("修正"))
+                            || title.contains(QStringLiteral("解决")) || title.contains(QStringLiteral("调整"))
+                            || title.contains(QStringLiteral("优化")) || title.contains(QStringLiteral("改进"))
+                            || title.contains(QStringLiteral("变更")) || title.contains(QStringLiteral("改变"))
+                            || title.contains(QStringLiteral("changed"), Qt::CaseInsensitive)
+                            || title.contains(QStringLiteral("feature"), Qt::CaseInsensitive)
+                            || title.contains(QStringLiteral("fix"), Qt::CaseInsensitive)
+                            || title.contains(QStringLiteral("improve"), Qt::CaseInsensitive);
+    if (!looksKnown)
+        return false;
+
+    *kind = kindFromWord(title);
+    return true;
+}
+
+QString stripByline(QString line)
+{
+    static const QRegularExpression byline(
+        QStringLiteral("\\s+by\\s+@[\\w-]+.*$"), QRegularExpression::CaseInsensitiveOption);
+    line.remove(byline);
+    return line.trimmed();
+}
+
+bool prefixKind(QString *line, UpdateNoteKind *kind)
+{
+    static const QStringList prefixes = {
+        QStringLiteral("新增"), QStringLiteral("添加"), QStringLiteral("修复"),
+        QStringLiteral("修正"), QStringLiteral("解决"), QStringLiteral("调整"),
+        QStringLiteral("优化"), QStringLiteral("改进"), QStringLiteral("变更"),
+        QStringLiteral("改变"),
+    };
+
+    const QString text = line->trimmed();
+    for (const QString &prefix : prefixes) {
+        if (!text.startsWith(prefix))
+            continue;
+
+        QString rest = text.mid(prefix.size());
+        bool separated = false;
+        if (rest.startsWith(QLatin1Char(':')) || rest.startsWith(QStringLiteral("："))) {
+            rest.remove(0, 1);
+            separated = true;
+        } else if (!rest.isEmpty() && rest.at(0).isSpace()) {
+            separated = true;
+        }
+        if (!separated)
+            continue;
+
+        rest = rest.trimmed();
+        if (rest.size() < 2)
+            continue;
+
+        *kind = kindFromWord(prefix);
+        *line = rest;
+        return true;
+    }
+    return false;
+}
+
+UpdateNoteKind inferKind(const QString &text)
+{
+    static const QStringList fixedWords = {
+        QStringLiteral("修复"), QStringLiteral("修正"), QStringLiteral("解决"),
+        QStringLiteral("修好"), QStringLiteral("不再"), QStringLiteral("避免"),
+        QStringLiteral("防止"), QStringLiteral("卡死"), QStringLiteral("崩溃"),
+        QStringLiteral("闪退"), QStringLiteral("报错"), QStringLiteral("错误"),
+        QStringLiteral("无效"), QStringLiteral("丢失"), QStringLiteral("误报"),
+        QStringLiteral("失效"),
+    };
+    static const QStringList addedWords = {
+        QStringLiteral("新增"), QStringLiteral("添加"), QStringLiteral("加入"),
+        QStringLiteral("增加"), QStringLiteral("支持"), QStringLiteral("推出"),
+        QStringLiteral("上线"), QStringLiteral("引入"), QStringLiteral("新功能"),
+        QStringLiteral("现在可以"),
+    };
+    static const QStringList changedWords = {
+        QStringLiteral("调整"), QStringLiteral("优化"), QStringLiteral("改进"),
+        QStringLiteral("改为"), QStringLiteral("改成"), QStringLiteral("换成"),
+        QStringLiteral("重做"), QStringLiteral("统一"), QStringLiteral("提升"),
+        QStringLiteral("加快"), QStringLiteral("精简"), QStringLiteral("变更"),
+    };
+
+    for (const QString &word : fixedWords) {
+        if (text.contains(word))
+            return UpdateNoteKind::Fixed;
+    }
+    for (const QString &word : addedWords) {
+        if (text.contains(word))
+            return UpdateNoteKind::Added;
+    }
+    for (const QString &word : changedWords) {
+        if (text.contains(word))
+            return UpdateNoteKind::Changed;
+    }
+    return UpdateNoteKind::Changed;
+}
+
+} // namespace
+
+QVector<UpdateNote> UpdateManager::parseReleaseNotes(const QString &raw)
+{
+    QVector<UpdateNote> notes;
     const QStringList rawLines = raw.split(QRegularExpression(QStringLiteral("[\r\n]+")));
 
     static const QRegularExpression bullet(QStringLiteral("^\\s*(?:[-*+·•]|\\d+[.)])\\s*"));
-    static const QRegularExpression heading(QStringLiteral("^\\s{0,3}#{1,6}\\s*"));
     static const QRegularExpression markup(QStringLiteral("[`*_]{1,3}"));
+
+    UpdateNoteKind sectionKind = UpdateNoteKind::Changed;
+    bool hasSection = false;
 
     for (QString line : rawLines) {
         line.replace(QChar(0xFFFD), QLatin1Char(' '));
-        line.remove(heading);
+
+        UpdateNoteKind headingKind = UpdateNoteKind::Changed;
+        if (kindFromHeading(line, &headingKind)) {
+            sectionKind = headingKind;
+            hasSection = true;
+            continue;
+        }
+
         line.remove(bullet);
         line.remove(markup);
-        line = line.simplified();
+        line = stripByline(line).simplified();
 
         if (line.isEmpty())
             continue;
         if (line.startsWith(QStringLiteral("---")) || line.startsWith(QStringLiteral("===")))
             continue;
-        // 纯链接行 / 图片行没意义，跳过
         if (line.startsWith(QStringLiteral("![")) || line.startsWith(QStringLiteral("http")))
+            continue;
+        // GitHub 自动生成的尾巴，不是给用户看的更新内容
+        const QString lower = line.toLower();
+        if (lower.startsWith(QStringLiteral("full changelog"))
+            || lower.startsWith(QStringLiteral("完整更新日志"))
+            || lower.startsWith(QStringLiteral("what's changed"))
+            || lower.startsWith(QStringLiteral("whats changed")))
             continue;
 
         if (line.size() > 120)
             line = line.left(120) + QStringLiteral("…");
-        lines << line;
-        if (lines.size() >= 40)
+
+        UpdateNote note;
+        note.text = line;
+        if (!prefixKind(&note.text, &note.kind))
+            note.kind = hasSection ? sectionKind : inferKind(note.text);
+        notes.append(note);
+
+        if (notes.size() >= 40)
             break;
     }
-    return lines;
+    return notes;
 }
 
 QString UpdateManager::normalizeVersion(const QString &raw)

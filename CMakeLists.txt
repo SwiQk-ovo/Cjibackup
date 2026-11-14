@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Cjibackup VERSION 1.1.5 LANGUAGES CXX)
+project(Cjibackup VERSION 2.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -41,6 +41,13 @@ set(APP_SOURCES
     src/core/exifscanner.cpp
     src/core/changelog.cpp
     src/pages/backup_page.cpp
+    src/pages/album_page.cpp
+    src/core/thumbnailloader.cpp
+    src/core/perfprofile.cpp
+    src/core/perfmonitor.cpp
+    src/widgets/mediaplayer.cpp
+    src/widgets/glasspanel.cpp
+    src/widgets/mediawall.cpp
     src/pages/history_page.cpp
     src/pages/events_page.cpp
     src/pages/settings_page.cpp
@@ -51,6 +58,7 @@ set(APP_SOURCES
     src/widgets/changelogdialog.cpp
     src/widgets/guideoverlay.cpp
     src/widgets/updatedialog.cpp
+    src/widgets/separatordialog.cpp
     src/core/appicon.cpp
     src/core/appicon.h
     src/widgets/appicons.cpp
@@ -81,6 +89,13 @@ set(APP_HEADERS
     src/core/changelog.h
     src/core/version.h
     src/pages/backup_page.h
+    src/pages/album_page.h
+    src/core/thumbnailloader.h
+    src/core/perfprofile.h
+    src/core/perfmonitor.h
+    src/widgets/mediaplayer.h
+    src/widgets/glasspanel.h
+    src/widgets/mediawall.h
     src/pages/history_page.h
     src/pages/events_page.h
     src/pages/settings_page.h
@@ -91,6 +106,7 @@ set(APP_HEADERS
     src/widgets/changelogdialog.h
     src/widgets/guideoverlay.h
     src/widgets/updatedialog.h
+    src/widgets/separatordialog.h
     src/widgets/appicons.h
     src/widgets/squircle.h
     src/widgets/toast.h
@@ -289,13 +305,21 @@ set_target_properties(CjiPublisher PROPERTIES OUTPUT_NAME "CjiPublisher")
 
 # ---------------- Qt Multimedia（可选）：自定义启动动画播放 MP4 ----------------
 # 装了 Qt Multimedia 就编进去；没装也不影响构建，只是自定义动画只支持 GIF
-find_package(Qt6 QUIET COMPONENTS Multimedia)
+find_package(Qt6 QUIET COMPONENTS Multimedia MultimediaWidgets)
 if(TARGET Qt6::Multimedia)
     message(STATUS "Qt Multimedia found: MP4 splash animation enabled")
     target_link_libraries(Cjibackup PRIVATE Qt6::Multimedia)
+    if(TARGET Qt6::MultimediaWidgets)
+        target_link_libraries(Cjibackup PRIVATE Qt6::MultimediaWidgets)
+        target_compile_definitions(Cjibackup PRIVATE CJI_HAS_VIDEO_WIDGET=1)
+    endif()
     target_compile_definitions(Cjibackup PRIVATE CJI_HAS_MULTIMEDIA=1)
     if(TARGET shot_tool)
         target_link_libraries(shot_tool PRIVATE Qt6::Multimedia)
+    if(TARGET Qt6::MultimediaWidgets)
+        target_link_libraries(shot_tool PRIVATE Qt6::MultimediaWidgets)
+        target_compile_definitions(shot_tool PRIVATE CJI_HAS_VIDEO_WIDGET=1)
+    endif()
         target_compile_definitions(shot_tool PRIVATE CJI_HAS_MULTIMEDIA=1)
     endif()
 endif()

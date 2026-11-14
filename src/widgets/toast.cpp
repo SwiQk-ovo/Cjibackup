@@ -31,7 +31,7 @@ QColor accentFor(int kind)
     case Toast::Warning:  return QColor(0xF5, 0x9E, 0x0B);
     case Toast::Error:    return QColor(0xF8, 0x71, 0x71);
     case Toast::Reminder: return QColor(0x60, 0xA5, 0xFA);
-    default:              return QColor(0x3B, 0x82, 0xF6);
+    default:              return QColor(0x4C, 0x8D, 0xFF);
     }
 }
 

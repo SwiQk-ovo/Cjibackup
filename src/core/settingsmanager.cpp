@@ -164,6 +164,29 @@ void SettingsManager::setSubfolderByExt(bool v)
     store("subfolderByExt", v);
 }
 
+QString SettingsManager::pathSeparator() const
+{
+    const QString v = value("pathSeparator", "-").toString();
+    return v.isEmpty() ? QStringLiteral("-") : v;
+}
+
+void SettingsManager::setPathSeparator(const QString &sep)
+{
+    QSettings settings;
+    settings.setValue(QStringLiteral("pathSeparator"), sep.isEmpty() ? QStringLiteral("-") : sep);
+}
+
+QString SettingsManager::mergeSeparator() const
+{
+    const QString v = value("mergeSeparator", QStringLiteral("-")).toString();
+    return v.isEmpty() ? QStringLiteral("-") : v;
+}
+
+void SettingsManager::setMergeSeparator(const QString &sep)
+{
+    QSettings settings;
+    settings.setValue(QStringLiteral("mergeSeparator"), sep.isEmpty() ? QStringLiteral("-") : sep);
+}
 /* ---------------- 校验 / 格式化 ---------------- */
 
 bool SettingsManager::formatAfterBackup() const
