@@ -644,6 +644,23 @@ int main(int argc, char *argv[])
             QTextStream(stdout) << "palette drop config: " << flowCanvas->flowConfig().join(" | ")
                                 << "\n";
             delete mime;
+
+            // 空白画布区域拖入：不走合并，直接按位置追加
+            flowCanvas->setFlowConfig({"year"});
+            wait(300);
+            QMimeData *mime2 = new QMimeData;
+            mime2->setData(FlowMime::Format, QByteArray("ext"));
+            mime2->setText(QStringLiteral("后缀"));
+            const QPoint emptyPos = view->mapFromScene(QPointF(420, 90));
+            QDragEnterEvent enter2(emptyPos, Qt::CopyAction, mime2, Qt::LeftButton, Qt::NoModifier);
+            QApplication::sendEvent(view->viewport(), &enter2);
+            QDropEvent drop2(QPointF(emptyPos), Qt::CopyAction, mime2, Qt::LeftButton,
+                             Qt::NoModifier);
+            QApplication::sendEvent(view->viewport(), &drop2);
+            wait(600);
+            QTextStream(stdout) << "palette empty-drop config: "
+                                << flowCanvas->flowConfig().join(" | ") << "\n";
+            delete mime2;
         } else {
             QTextStream(stdout) << "  palette drop skipped（找不到月节点）\n";
         }
