@@ -183,7 +183,8 @@ qt_add_executable(CjiInstaller WIN32
     ${CMAKE_CURRENT_BINARY_DIR}/setup.rc
 )
 cji_configure_gui_target(CjiInstaller)
-set_target_properties(CjiInstaller PROPERTIES OUTPUT_NAME "CjibackupSetup")
+target_compile_definitions(CjiInstaller PRIVATE CJI_VERSION_STRING="${PROJECT_VERSION}")
+set_target_properties(CjiInstaller PROPERTIES OUTPUT_NAME "KOPALSetup")
 
 qt_add_executable(CjiUninstaller WIN32
     installer/uninstall_main.cpp
@@ -214,7 +215,8 @@ qt_add_executable(CjiUninstaller WIN32
     ${CMAKE_CURRENT_BINARY_DIR}/uninstall.rc
 )
 cji_configure_gui_target(CjiUninstaller)
-set_target_properties(CjiUninstaller PROPERTIES OUTPUT_NAME "CjibackupUninstall")
+target_compile_definitions(CjiUninstaller PRIVATE CJI_VERSION_STRING="${PROJECT_VERSION}")
+set_target_properties(CjiUninstaller PROPERTIES OUTPUT_NAME "KOPALUninstall")
 
     qt_add_executable(packer tools/packer.cpp)
 target_link_libraries(packer PRIVATE Qt6::Core)
@@ -225,7 +227,7 @@ target_link_libraries(CjibackupBootstrap PRIVATE user32 gdi32)
 if(MINGW)
     target_link_options(CjibackupBootstrap PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
-set_target_properties(CjibackupBootstrap PROPERTIES OUTPUT_NAME "CjibackupBootstrap")
+set_target_properties(CjibackupBootstrap PROPERTIES OUTPUT_NAME "KOPALBootstrap")
 
 if(CJI_BUILD_TESTS)
     qt_add_executable(payload_test

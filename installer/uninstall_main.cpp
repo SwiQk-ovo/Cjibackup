@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     Localization::installChineseTranslations(app);
-    app.setApplicationName(QStringLiteral("CjibackupUninstall"));
+    app.setApplicationName(QStringLiteral("KOPALUninstall"));
     app.setOrganizationName(QStringLiteral("Cjibackup"));
 
     QFile qss(QStringLiteral(":/theme.qss"));

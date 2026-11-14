@@ -18,6 +18,9 @@
 namespace {
 
 const QString kUninstallKey =
+    QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\KOPAL");
+// 2.2.1 之前用的是 Cjibackup 这个键名，升级时迁移过来
+const QString kLegacyUninstallKey =
     QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Cjibackup");
 
 #ifdef Q_OS_WIN
@@ -103,9 +106,12 @@ QString defaultInstallDir()
 {
     // 覆盖安装：沿用上次装的位置，别把新版本装成第二个副本
     {
-        QSettings entry(QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Cjibackup"),
-                        QSettings::NativeFormat);
-        const QString existing = entry.value(QStringLiteral("InstallLocation")).toString();
+        QSettings entry(kUninstallKey, QSettings::NativeFormat);
+        QString existing = entry.value(QStringLiteral("InstallLocation")).toString();
+        if (existing.isEmpty()) {
+            QSettings legacy(kLegacyUninstallKey, QSettings::NativeFormat);
+            existing = legacy.value(QStringLiteral("InstallLocation")).toString();
+        }
         if (!existing.isEmpty() && QDir(existing).exists())
             return QDir::fromNativeSeparators(existing);
     }
@@ -201,6 +207,12 @@ bool writeUninstallEntry(const QString &installDir)
     reg.setValue(QStringLiteral("NoRepair"), 1);
     reg.setValue(QStringLiteral("EstimatedSize"), 60000);
     reg.sync();
+
+    // 迁移：清掉旧键，避免「设置 - 应用」里出现两个 KOPAL
+    QSettings legacy(kLegacyUninstallKey, QSettings::NativeFormat);
+    legacy.remove(QString());
+    legacy.sync();
+
     return reg.status() == QSettings::NoError;
 }
 
@@ -209,6 +221,9 @@ bool removeUninstallEntry()
     QSettings reg(kUninstallKey, QSettings::NativeFormat);
     reg.remove(QString());
     reg.sync();
+    QSettings legacy(kLegacyUninstallKey, QSettings::NativeFormat);
+    legacy.remove(QString());
+    legacy.sync();
     QSettings("HKEY_CURRENT_USER\\Software", QSettings::NativeFormat).remove("Cjibackup");
     return true;
 }
@@ -216,7 +231,11 @@ bool removeUninstallEntry()
 QString registeredInstallDir()
 {
     QSettings reg(kUninstallKey, QSettings::NativeFormat);
-    return reg.value(QStringLiteral("InstallLocation")).toString();
+    const QString dir = reg.value(QStringLiteral("InstallLocation")).toString();
+    if (!dir.isEmpty())
+        return dir;
+    QSettings legacy(kLegacyUninstallKey, QSettings::NativeFormat);
+    return legacy.value(QStringLiteral("InstallLocation")).toString();
 }
 
 } // namespace InstallData

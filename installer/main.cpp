@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     Localization::installChineseTranslations(app);
-    app.setApplicationName(QStringLiteral("CjibackupSetup"));
+    app.setApplicationName(QStringLiteral("KOPALSetup"));
     app.setOrganizationName(QStringLiteral("Cjibackup"));
 
     QFile qss(QStringLiteral(":/theme.qss"));

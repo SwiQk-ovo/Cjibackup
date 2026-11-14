@@ -23,9 +23,9 @@ BEGIN
             VALUE "CompanyName",      "SwiQk-ovo"
             VALUE "FileDescription",  "KOPAL"
             VALUE "FileVersion",      "@PROJECT_VERSION@"
-            VALUE "InternalName",     "Cjibackup"
+            VALUE "InternalName",     "KOPAL"
             VALUE "LegalCopyright",   "© 2026 SwiQk-ovo"
-            VALUE "OriginalFilename", "Cjibackup.exe"
+            VALUE "OriginalFilename", "KOPAL.exe"
             VALUE "ProductName",      "KOPAL"
             VALUE "ProductVersion",   "@PROJECT_VERSION@"
         END

@@ -373,7 +373,7 @@ void BackupPage::setupUI()
     dstOuter->setSpacing(6);
     auto *dstLayout = new QHBoxLayout();
     m_targetEdit = new QLineEdit(dstGroup);
-    m_targetEdit->setPlaceholderText("例如 D:\\Cjibackup");
+    m_targetEdit->setPlaceholderText("例如 D:\\KOPAL");
     auto *dstBtn = new QPushButton("浏览", dstGroup);
     dstBtn->setCursor(Qt::PointingHandCursor);
     connect(dstBtn, &QPushButton::clicked, this, &BackupPage::browseTarget);

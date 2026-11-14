@@ -19,9 +19,9 @@ BEGIN
             VALUE "CompanyName",      "SwiQk-ovo"
             VALUE "FileDescription",  "KOPAL 安装程序"
             VALUE "FileVersion",      "@PROJECT_VERSION@"
-            VALUE "InternalName",     "CjibackupBootstrap"
+            VALUE "InternalName",     "KOPALBootstrap"
             VALUE "LegalCopyright",   "© 2026 SwiQk-ovo"
-            VALUE "OriginalFilename", "Cjibackup_Setup_@PROJECT_VERSION@.exe"
+            VALUE "OriginalFilename", "KOPAL_Setup_@PROJECT_VERSION@.exe"
             VALUE "ProductName",      "KOPAL"
             VALUE "ProductVersion",   "@PROJECT_VERSION@"
         END

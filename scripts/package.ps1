@@ -43,7 +43,7 @@ $qtPlugins = Join-Path $QtDir "plugins"
 $env:PATH = "$MingwBin;$qtBin;$env:PATH"
 
 # 找主程序 exe（不硬编码文件名，靠排除法挑）
-# 注意：build 目录里还有 CjibackupSetup / CjibackupUninstall / CjibackupBootstrap /
+# 注意：build 目录里还有 KOPALSetup / KOPALUninstall / KOPALBootstrap /
 #       packer / CjiPublisher / 测试 / 截图工具，必须全部排除，只留主程序
 $appExe = Get-ChildItem $BuildDir -Filter "*.exe" -File | Where-Object {
     $_.Name -notmatch 'Setup|Uninstall|Bootstrap|_test|smoke|shot_tool|packer|Publisher|probe'
@@ -53,9 +53,9 @@ if ($appExe.Name -ne "KOPAL.exe") {
     throw "挑到的主程序不对：$($appExe.Name)（应该是 KOPAL.exe）"
 }
 
-$setupExe     = Join-Path $BuildDir "CjibackupSetup.exe"
-$uninstallExe = Join-Path $BuildDir "CjibackupUninstall.exe"
-$bootstrapExe = Join-Path $BuildDir "CjibackupBootstrap.exe"
+$setupExe     = Join-Path $BuildDir "KOPALSetup.exe"
+$uninstallExe = Join-Path $BuildDir "KOPALUninstall.exe"
+$bootstrapExe = Join-Path $BuildDir "KOPALBootstrap.exe"
 $packerExe    = Join-Path $BuildDir "packer.exe"
 foreach ($f in @($setupExe, $uninstallExe, $bootstrapExe, $packerExe)) {
     if (-not (Test-Path $f)) { throw "缺少构建产物: $f" }
@@ -110,17 +110,17 @@ $qm = Join-Path $QtDir "translations\qtbase_zh_CN.qm"
 if (Test-Path $qm) { Copy-Item $qm $translationDir }
 
 Write-Step "打包便携版 zip"
-$portableZip = Join-Path $DistDir "Cjibackup_$Version`_portable.zip"
+$portableZip = Join-Path $DistDir "KOPAL_$Version`_portable.zip"
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $portableZip -CompressionLevel Optimal
 
 Write-Step "生成安装载荷（压缩，给安装器用）"
 Copy-Item (Join-Path $stage "*") $payload -Recurse -Force
-Copy-Item $uninstallExe (Join-Path $payload "CjibackupUninstall.exe") -Force
+Copy-Item $uninstallExe (Join-Path $payload "KOPALUninstall.exe") -Force
 & $packerExe $payload (Join-Path $DistDir "payload.pack")
 if ($LASTEXITCODE -ne 0) { throw "打包载荷失败" }
 
 Write-Step "生成引导载荷（不压缩，给引导程序用）"
-Copy-Item $setupExe (Join-Path $boot "CjibackupSetup.exe")
+Copy-Item $setupExe (Join-Path $boot "KOPALSetup.exe")
 Copy-Item (Join-Path $DistDir "payload.pack") $boot
 foreach ($dll in $qtDlls) {
     $src = Join-Path $qtBin $dll
@@ -139,7 +139,7 @@ foreach ($group in $pluginGroups) {
 if ($LASTEXITCODE -ne 0) { throw "打包引导载荷失败" }
 
 Write-Step "拼接单文件安装包"
-$setupOut = Join-Path $DistDir "Cjibackup_Setup_$Version.exe"
+$setupOut = Join-Path $DistDir "KOPAL_Setup_$Version.exe"
 $bootSize = (Get-Item (Join-Path $DistDir "boot.pack")).Length
 
 $out = [System.IO.File]::Create($setupOut)

@@ -520,7 +520,7 @@ void UpdateManager::downloadAndInstall(const QString &url, const QString &versio
 
     const QString dir = QDir::tempPath();
     m_downloadPath = QDir(dir).filePath(
-        QString("Cjibackup-Setup-%1-%2.exe")
+        QString("KOPAL-Setup-%1-%2.exe")
             .arg(version, QDateTime::currentDateTime().toString("yyyyMMddHHmmss")));
     m_downloadFile = new QFile(m_downloadPath, this);
     if (!m_downloadFile->open(QIODevice::WriteOnly)) {

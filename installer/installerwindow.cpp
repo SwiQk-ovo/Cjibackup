@@ -417,6 +417,9 @@ bool InstallerWindow::performInstall(const QString &dir, bool createShortcuts,
         return false;
     }
 
+    // 老版本的卸载器叫 CjibackupUninstall.exe；升级后删掉，安装目录里只留 KOPAL 命名
+    QFile::remove(m_installDir + QStringLiteral("/CjibackupUninstall.exe"));
+
     if (createShortcuts && !m_testMode) {
         QString shortcutError;
         InstallData::createShortcuts(m_installDir,

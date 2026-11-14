@@ -19,9 +19,9 @@ BEGIN
             VALUE "CompanyName",      "SwiQk-ovo"
             VALUE "FileDescription",  "KOPAL 卸载程序"
             VALUE "FileVersion",      "@PROJECT_VERSION@"
-            VALUE "InternalName",     "CjibackupUninstall"
+            VALUE "InternalName",     "KOPALUninstall"
             VALUE "LegalCopyright",   "© 2026 SwiQk-ovo"
-            VALUE "OriginalFilename", "CjibackupUninstall.exe"
+            VALUE "OriginalFilename", "KOPALUninstall.exe"
             VALUE "ProductName",      "KOPAL"
             VALUE "ProductVersion",   "@PROJECT_VERSION@"
         END

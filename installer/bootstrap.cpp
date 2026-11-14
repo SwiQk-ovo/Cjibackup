@@ -20,12 +20,12 @@ struct Entry
 };
 
 
-// 解包过程的诊断日志：%TEMP%\CjibackupSetup.log（追加写，UTF-8）
+// 解包过程的诊断日志：%TEMP%\KOPALSetup.log（追加写，UTF-8）
 void logLine(const std::wstring &text)
 {
     wchar_t tempPath[MAX_PATH] = {0};
     GetTempPathW(MAX_PATH, tempPath);
-    const std::wstring path = std::wstring(tempPath) + L"CjibackupSetup.log";
+    const std::wstring path = std::wstring(tempPath) + L"KOPALSetup.log";
 
     HANDLE file = CreateFileW(path.c_str(), FILE_APPEND_DATA,
                               FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS,
@@ -386,7 +386,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
     WNDCLASSW wc = {};
     wc.lpfnWndProc = windowProc;
     wc.hInstance = instance;
-    wc.lpszClassName = L"CjibackupBootstrapWindow";
+    wc.lpszClassName = L"KOPALBootstrapWindow";
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     RegisterClassW(&wc);
 
@@ -425,7 +425,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
 
     for (const std::wstring &root : tempRoots) {
         wchar_t candidate[MAX_PATH] = {0};
-        swprintf(candidate, MAX_PATH, L"%lsCjibackupSetup_%u", root.c_str(),
+        swprintf(candidate, MAX_PATH, L"%lsKOPALSetup_%u", root.c_str(),
                  (unsigned)GetCurrentProcessId());
         if (!ensureDirectory(candidate)) {
             logLine(L"建目录失败 " + std::wstring(candidate));
@@ -465,7 +465,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
         wchar_t logPath[MAX_PATH] = {0};
         wchar_t tempPath[MAX_PATH] = {0};
         GetTempPathW(MAX_PATH, tempPath);
-        lstrcpynW(logPath, (std::wstring(tempPath) + L"CjibackupSetup.log").c_str(), MAX_PATH);
+        lstrcpynW(logPath, (std::wstring(tempPath) + L"KOPALSetup.log").c_str(), MAX_PATH);
 
         swprintf(detail, 1024,
                  L"解压安装文件失败（%ls，错误码 %lu）。\n\n"
@@ -481,7 +481,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
 
     updateProgress(97, L"正在启动安装程序…");
 
-    const std::wstring installerPath = tempDir + L"\\CjibackupSetup.exe";
+    const std::wstring installerPath = tempDir + L"\\KOPALSetup.exe";
     std::wstring commandLine = L"\"" + installerPath + L"\"" + argumentSuffix();
 
     STARTUPINFOW si = {};

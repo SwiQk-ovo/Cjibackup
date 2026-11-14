@@ -26,6 +26,7 @@ QVector<Release> buildReleases()
         release.version = QStringLiteral("2.2.1");
         release.date = QStringLiteral("2026-11-14");
         release.items = {
+            {Kind::Changed, QStringLiteral("安装包、卸载程序、快捷方式、文件属性统一用 KOPAL 命名，不再出现 Cjibackup")},
             {Kind::Changed, QStringLiteral("全局圆角收紧：卡片 10px、输入/下拉 8px、按钮 7px，界面更利落")},
             {Kind::Changed, QStringLiteral("字号重新分档：正文 13、页标题 22、说明 12，标题和正文的层级更清楚")},
             {Kind::Improved, QStringLiteral("流程图去掉点阵背景、节点投影和连线发光，节点边框收细，画布更干净")},

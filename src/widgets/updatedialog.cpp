@@ -538,7 +538,7 @@ void UpdateDialog::showDemoReleases()
     pre.title = QStringLiteral("KOPAL v2.3.0");
     pre.date = QStringLiteral("2026-11-22");
     pre.prerelease = true;
-    pre.downloadUrl = QStringLiteral("https://example.com/Cjibackup_Setup_2.3.0.exe");
+    pre.downloadUrl = QStringLiteral("https://example.com/KOPAL_Setup_2.3.0.exe");
     pre.pageUrl = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
     pre.notes = {
         {UpdateNoteKind::Added, QStringLiteral("流程图新增「合并节点」：拖一个节点到另一个节点上就能合并成一层文件夹")},
