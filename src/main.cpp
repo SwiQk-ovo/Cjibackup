@@ -5,6 +5,7 @@
 #include "core/soundplayer.h"
 #include "core/version.h"
 #include "mainwindow.h"
+#include "widgets/smoothscroller.h"
 #include "widgets/splashwindow.h"
 
 #include <QApplication>
@@ -19,7 +20,7 @@ int main(int argc, char *argv[])
     QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
-    QApplication app(argc, argv);
+    KopalApplication app(argc, argv);
     // 注意：这个 key 决定 QSettings（注册表）和单实例的名字，
     // 改名会让老用户的设置/历史全部读不到，所以即使软件已经改名成「KOPAL」也保持原值
     app.setApplicationName("C极备份");

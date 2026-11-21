@@ -19,6 +19,8 @@
 
 class FlowCanvas;
 class QMouseEvent;
+class QPropertyAnimation;
+class QGraphicsOpacityEffect;
 
 /**
  * 文件重命名的胶囊（前缀 / 序号 / 自定义内容）。
@@ -82,6 +84,8 @@ private:
     QWidget *buildRenameGroup(QWidget *parent);
     void updateButtons();
     void saveSettings();
+    void animateProgressTo(int percent);
+    void animateProgressOpacity(qreal target, int durationMs);
 
     // 文件重命名胶囊区
     void refreshRenameChips();
@@ -114,6 +118,9 @@ private:
     QLabel *m_renamePreview = nullptr;
 
     QProgressBar *m_progressBar = nullptr;
+    QPropertyAnimation *m_progressAnim = nullptr;
+    QPropertyAnimation *m_progressFade = nullptr;
+    QGraphicsOpacityEffect *m_progressOpacity = nullptr;
     QLabel *m_percentLabel = nullptr;
     QLabel *m_speedLabel = nullptr;
     QLabel *m_timeLabel = nullptr;

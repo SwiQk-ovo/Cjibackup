@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Cjibackup VERSION 2.3.0 LANGUAGES CXX)
+project(Cjibackup VERSION 2.3.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -54,6 +54,7 @@ set(APP_SOURCES
     src/pages/about_page.cpp
     src/widgets/flowcanvas.cpp
     src/widgets/typewritertooltip.cpp
+    src/widgets/smoothscroller.cpp
     src/widgets/darkdialog.cpp
     src/widgets/changelogdialog.cpp
     src/widgets/guideoverlay.cpp
@@ -102,6 +103,7 @@ set(APP_HEADERS
     src/pages/about_page.h
     src/widgets/flowcanvas.h
     src/widgets/typewritertooltip.h
+    src/widgets/smoothscroller.h
     src/widgets/darkdialog.h
     src/widgets/changelogdialog.h
     src/widgets/guideoverlay.h
@@ -296,6 +298,17 @@ if(CJI_BUILD_TESTS)
     )
     target_link_libraries(tls_probe PRIVATE Qt6::Core Qt6::Network)
     target_include_directories(tls_probe PRIVATE src)
+
+    # 动画探针：滚轮缓动 + 感叹号提示淡入
+    qt_add_executable(animation_probe
+        tests/animation_probe.cpp
+        src/widgets/smoothscroller.cpp
+        src/widgets/smoothscroller.h
+        src/widgets/typewritertooltip.cpp
+        src/widgets/typewritertooltip.h
+    )
+    target_link_libraries(animation_probe PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+    target_include_directories(animation_probe PRIVATE src)
 
     # 离屏截图工具：给文档 / 预览用，不参与发布
     qt_add_executable(shot_tool

@@ -1,12 +1,14 @@
 #include "typewritertooltip.h"
 
 #include <QCursor>
+#include <QEasingCurve>
 #include <QEnterEvent>
 #include <QFontMetrics>
 #include <QApplication>
 #include <QGuiApplication>
 #include <QLinearGradient>
 #include <QPainter>
+#include <QPropertyAnimation>
 #include <QScreen>
 #include <QTimer>
 #include <QWindow>
@@ -41,6 +43,20 @@ TypewriterTooltip::TypewriterTooltip(QWidget *parent)
     m_timer = new QTimer(this);
     m_timer->setInterval(kTickMs);
     connect(m_timer, &QTimer::timeout, this, &TypewriterTooltip::tick);
+
+    // 出现 / 消失都淡入淡出，不要硬闪
+    m_fade = new QPropertyAnimation(this, "windowOpacity", this);
+    m_fade->setDuration(170);
+    m_fade->setEasingCurve(QEasingCurve::OutCubic);
+    connect(m_fade, &QPropertyAnimation::finished, this, [this]() {
+        if (windowOpacity() <= 0.01) {
+            m_timer->stop();
+            hide();
+            m_text.clear();
+            m_visibleChars = 0;
+            update();
+        }
+    });
 }
 
 void TypewriterTooltip::showText(const QString &text, QWidget *anchor)
@@ -61,8 +77,19 @@ void TypewriterTooltip::showText(const QString &text, QWidget *anchor)
     m_idleTicks = 0;
 
     applyGeometry();
-    show();
+
+    // 从当前透明度淡入；如果正在淡出，直接反向回来
+    m_fade->stop();
+    if (!isVisible()) {
+        setWindowOpacity(0.0);
+        show();
+    }
     raise();
+    m_fade->setStartValue(windowOpacity());
+    m_fade->setEndValue(1.0);
+    m_fade->setDuration(170);
+    m_fade->start();
+
     m_timer->start();
 }
 
@@ -73,10 +100,16 @@ void TypewriterTooltip::dismiss()
     if (m_deleting)
         return;
 
-    // 已打出的文字逐字删除后再隐藏
+    // 淡出；淡出结束再真正 hide（见构造函数里的 finished）
     m_deleting = true;
     m_idleTicks = 0;
-    m_timer->start();
+    m_timer->stop();
+
+    m_fade->stop();
+    m_fade->setStartValue(windowOpacity());
+    m_fade->setEndValue(0.0);
+    m_fade->setDuration(150);
+    m_fade->start();
 }
 
 void TypewriterTooltip::applyGeometry()

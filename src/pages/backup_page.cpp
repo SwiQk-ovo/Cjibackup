@@ -20,6 +20,9 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QScrollArea>
+#include <QGraphicsOpacityEffect>
+#include <QPropertyAnimation>
+#include <QEasingCurve>
 #include <QStorageInfo>
 #include <QTime>
 #include <QVBoxLayout>
@@ -468,6 +471,22 @@ void BackupPage::setupUI()
     m_progressBar->setFixedHeight(8);
     progLayout->addWidget(m_progressBar);
 
+    // 进度条平滑推进 + 启动/停止时的淡入淡出
+    m_progressOpacity = new QGraphicsOpacityEffect(m_progressBar);
+    m_progressOpacity->setOpacity(1.0);
+    m_progressBar->setGraphicsEffect(m_progressOpacity);
+
+    m_progressAnim = new QPropertyAnimation(m_progressBar, "value", this);
+    m_progressAnim->setEasingCurve(QEasingCurve::OutCubic);
+    m_progressAnim->setDuration(220);
+    connect(m_progressAnim, &QPropertyAnimation::valueChanged, this, [this](const QVariant &v) {
+        if (m_percentLabel)
+            m_percentLabel->setText(QString("%1%").arg(v.toInt()));
+    });
+
+    m_progressFade = new QPropertyAnimation(m_progressOpacity, "opacity", this);
+    m_progressFade->setEasingCurve(QEasingCurve::OutCubic);
+
     auto *infoLayout = new QHBoxLayout();
     m_percentLabel = new QLabel("0%", progGroup);
     m_percentLabel->setObjectName("statValue");
@@ -568,6 +587,37 @@ void BackupPage::saveSettings()
     sm->setMultithread(m_multithreadCheck->isChecked());
 }
 
+void BackupPage::animateProgressTo(int percent)
+{
+    if (!m_progressAnim)
+        return;
+
+    const int target = qBound(0, percent, 100);
+    const int current = m_progressBar->value();
+    if (target == current) {
+        m_percentLabel->setText(QString("%1%").arg(target));
+        return;
+    }
+
+    m_progressAnim->stop();
+    m_progressAnim->setStartValue(current);
+    m_progressAnim->setEndValue(target);
+    m_progressAnim->setDuration(qBound(140, 200 + qAbs(target - current) * 3, 420));
+    m_progressAnim->start();
+}
+
+void BackupPage::animateProgressOpacity(qreal target, int durationMs)
+{
+    if (!m_progressFade || !m_progressOpacity)
+        return;
+
+    m_progressFade->stop();
+    m_progressFade->setStartValue(m_progressOpacity->opacity());
+    m_progressFade->setEndValue(target);
+    m_progressFade->setDuration(durationMs);
+    m_progressFade->start();
+}
+
 void BackupPage::startBackup()
 {
     if (isBusy())
@@ -595,6 +645,11 @@ void BackupPage::startBackup()
 
     m_progressBar->setValue(0);
     m_percentLabel->setText(QStringLiteral("0%"));
+    m_progressAnim->stop();
+    if (m_progressOpacity) {
+        m_progressOpacity->setOpacity(0.0);
+        animateProgressOpacity(1.0, 240);
+    }
     m_noticeLabel->clear();
     m_elapsed.start();
     m_startedAt = QDateTime::currentDateTime();
@@ -621,6 +676,7 @@ void BackupPage::stopBackup()
     }
 
     m_engine->stop();
+    animateProgressOpacity(0.55, 220);
     Toast::showToast(QStringLiteral("已终止备份"),
                      QStringLiteral("已经拷过去的文件会留在目标文件夹里"), Toast::Warning, 8000);
 }
@@ -629,8 +685,7 @@ void BackupPage::onProgress(const BackupStats &stats)
 {
     if (stats.totalBytes > 0) {
         const int percent = int(stats.copiedBytes * 100 / stats.totalBytes);
-        m_progressBar->setValue(percent);
-        m_percentLabel->setText(QString("%1%").arg(percent));
+        animateProgressTo(percent);
     }
 
     m_fileLabel->setText(QString("文件: %1/%2").arg(stats.copiedFiles).arg(stats.totalFiles));
@@ -660,6 +715,7 @@ void BackupPage::onError(const QString &message)
 
 void BackupPage::onCompleted()
 {
+    animateProgressOpacity(1.0, 180);
     const BackupStats stats = m_engine->stats();
     const VerifyResult verify = m_engine->verifyResult();
     const QString src = m_sourceEdit->text().trimmed();

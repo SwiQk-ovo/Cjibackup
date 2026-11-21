@@ -7,6 +7,7 @@
 #include <QWidget>
 
 class QTimer;
+class QPropertyAnimation;
 class QEnterEvent;
 
 /**
@@ -40,6 +41,7 @@ private:
     bool m_deleting = false;
     int m_idleTicks = 0;
     QTimer *m_timer = nullptr;
+    QPropertyAnimation *m_fade = nullptr;
     QPointer<QWidget> m_anchor;
 };
 

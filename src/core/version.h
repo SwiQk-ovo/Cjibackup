@@ -8,17 +8,17 @@ namespace Cji {
 // 版本号只在这里改，安装包 / 关于页 / 更新检查都读这里
 inline constexpr int Major = 2;
 inline constexpr int Minor = 3;
-inline constexpr int Patch = 0;
+inline constexpr int Patch = 1;
 inline constexpr bool TestBuild = false;
 
 inline QString versionNumber()
 {
-    return QStringLiteral("2.3.0");
+    return QStringLiteral("2.3.1");
 }
 
 inline QString versionLabel()
 {
-    return QStringLiteral("正式版 v2.3.0");
+    return QStringLiteral("正式版 v2.3.1");
 }
 
 } // namespace Cji

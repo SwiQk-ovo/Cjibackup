@@ -20,6 +20,19 @@ QVector<Release> buildReleases()
 {
     QVector<Release> list;
 
+    // ---------------- 2.3.1 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("2.3.1");
+        release.date = QStringLiteral("2026-11-21");
+        release.items = {
+            {Kind::Improved, QStringLiteral("传输进度条改成平滑推进，开始/停止时带淡入淡出")},
+            {Kind::Improved, QStringLiteral("鼠标滚轮滚动加了缓动，设置页、更新页、素材墙不再一格一格跳")},
+            {Kind::Improved, QStringLiteral("设置项后面的「!」提示改成淡入淡出，不再硬闪")},
+        };
+        list.append(release);
+    }
+
     // ---------------- 2.3.0 ----------------
     {
         Release release;
