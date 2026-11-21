@@ -445,18 +445,27 @@ void SettingsPage::setupUI()
     updateLayout->setSpacing(10);
 
     {
-        auto *hint = new QLabel("检查新版本和选择升级通道。", updateGroup);
+        auto *hint = new QLabel("选择更新方式和升级通道。", updateGroup);
         hint->setObjectName("hintLabel");
         updateLayout->addWidget(hint);
     }
 
-    m_autoUpdateCheck = new QCheckBox("启动时自动检查更新", updateGroup);
-    m_autoUpdateCheck->setChecked(sm->autoCheckUpdates());
-    connect(m_autoUpdateCheck, &QCheckBox::toggled, this, [](bool v) {
-        SettingsManager::instance()->setAutoCheckUpdates(v);
+    m_updateMode = new QComboBox(updateGroup);
+    m_updateMode->addItem("自动更新（下载并安装）", SettingsManager::AutoUpdate);
+    m_updateMode->addItem("手动确认", SettingsManager::ManualUpdate);
+    m_updateMode->addItem("不检测更新", SettingsManager::NeverUpdate);
+    {
+        const int index = m_updateMode->findData(sm->updateMode());
+        m_updateMode->setCurrentIndex(index < 0 ? 0 : index);
+    }
+    connect(m_updateMode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+        SettingsManager::instance()->setUpdateMode(m_updateMode->currentData().toInt());
     });
-    updateLayout->addWidget(makeCheckRow(
-        m_autoUpdateCheck, "启动后后台查询一次 GitHub Releases，有更新才提示，不打断你操作。"));
+    updateLayout->addWidget(makeRow(
+        "更新方式", m_updateMode,
+        "自动更新：发现新版本后自动下载、安装并重启，不需要确认；"
+        "手动确认：只提示，点「立即升级」才安装；"
+        "不检测更新：后台完全不查，只有点「立即检查更新」才查。默认自动更新。"));
 
     m_updateChannel = new QComboBox(updateGroup);
     m_updateChannel->addItem("正式版通道", "release");

@@ -3,6 +3,7 @@
 #include "settingsmanager.h"
 #include "version.h"
 
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -58,6 +59,24 @@ QString cleanReleaseNotes(const QString &raw)
     if (text.isEmpty())
         return QStringLiteral("这个版本没有写更新说明。");
     return text;
+}
+
+QString friendlyNetworkError(const QString &raw)
+{
+    if (raw.contains(QStringLiteral("TLS initialization failed"), Qt::CaseInsensitive)
+        || raw.contains(QStringLiteral("SslHandshakeFailed"), Qt::CaseInsensitive)) {
+        return QStringLiteral("TLS 初始化失败：缺少 tls 运行库或系统时间不正确。"
+                              "可以点「在 GitHub 上查看」手动下载最新版");
+    }
+    return raw;
+}
+
+QString assetSha256(const QJsonObject &asset)
+{
+    const QString digest = asset.value(QStringLiteral("digest")).toString();
+    if (digest.startsWith(QStringLiteral("sha256:"), Qt::CaseInsensitive))
+        return digest.mid(7).trimmed();
+    return QString();
 }
 
 } // namespace
@@ -344,7 +363,7 @@ void UpdateManager::handleCheckReply(QNetworkReply *reply)
         if (status == 404)
             emit failed(QStringLiteral("GitHub 上还没有发布版本"));
         else
-            emit failed(QStringLiteral("检查更新失败：%1").arg(reply->errorString()));
+            emit failed(QStringLiteral("检查更新失败：%1").arg(friendlyNetworkError(reply->errorString())));
         return;
     }
 
@@ -364,6 +383,7 @@ void UpdateManager::handleCheckReply(QNetworkReply *reply)
     QString bestNotes;
     QString bestDownload;
     QString bestPage;
+    QString bestSha;
 
     for (const QJsonValue &value : doc.array()) {
         const QJsonObject release = value.toObject();
@@ -382,11 +402,13 @@ void UpdateManager::handleCheckReply(QNetworkReply *reply)
             continue;
 
         QString download;
+        QString sha;
         for (const QJsonValue &assetValue : release.value("assets").toArray()) {
             const QJsonObject asset = assetValue.toObject();
             const QString name = asset.value("name").toString();
             if (name.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
                 download = asset.value("browser_download_url").toString();
+                sha = assetSha256(asset);
                 if (name.contains(QStringLiteral("安装")) || name.contains(QStringLiteral("Setup"))
                     || name.contains(QStringLiteral("Installer")))
                     break;
@@ -397,6 +419,7 @@ void UpdateManager::handleCheckReply(QNetworkReply *reply)
         bestNotes = cleanReleaseNotes(release.value("body").toString());
         bestDownload = download;
         bestPage = release.value("html_url").toString();
+        bestSha = sha;
     }
 
     if (bestVersion.isEmpty()) {
@@ -406,7 +429,7 @@ void UpdateManager::handleCheckReply(QNetworkReply *reply)
     }
 
     emit statusChanged(QStringLiteral("发现新版本：v%1").arg(bestVersion));
-    emit updateFound(bestVersion, bestNotes, bestDownload, bestPage);
+    emit updateFound(bestVersion, bestNotes, bestDownload, bestPage, bestSha);
 }
 
 void UpdateManager::fetchAllReleases()
@@ -454,7 +477,7 @@ void UpdateManager::handleListReply(QNetworkReply *reply)
         if (status == 404)
             emit releasesFailed(QStringLiteral("GitHub 上还没有发布版本"));
         else
-            emit releasesFailed(QStringLiteral("检查更新失败：%1").arg(reply->errorString()));
+            emit releasesFailed(QStringLiteral("检查更新失败：%1").arg(friendlyNetworkError(reply->errorString())));
         return;
     }
 
@@ -491,6 +514,7 @@ void UpdateManager::handleListReply(QNetworkReply *reply)
             if (!name.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive))
                 continue;
             release.downloadUrl = asset.value("browser_download_url").toString();
+            release.sha256 = assetSha256(asset);
             if (name.contains(QStringLiteral("Setup")) || name.contains(QStringLiteral("安装"))
                 || name.contains(QStringLiteral("Installer")))
                 break;
@@ -507,7 +531,20 @@ void UpdateManager::handleListReply(QNetworkReply *reply)
     emit releasesFetched(releases);
 }
 
-void UpdateManager::downloadAndInstall(const QString &url, const QString &version)
+void UpdateManager::downloadAndInstall(const QString &url, const QString &version,
+                                       const QString &sha256)
+{
+    startDownload(url, version, sha256, true);
+}
+
+void UpdateManager::downloadForAutoInstall(const QString &url, const QString &version,
+                                           const QString &sha256)
+{
+    startDownload(url, version, sha256, false);
+}
+
+void UpdateManager::startDownload(const QString &url, const QString &version,
+                                  const QString &sha256, bool launchInstaller)
 {
     if (url.isEmpty()) {
         emit failed(QStringLiteral("这个版本没有提供安装包下载地址"));
@@ -552,31 +589,55 @@ void UpdateManager::downloadAndInstall(const QString &url, const QString &versio
             m_downloadFile->write(m_downloadReply->readAll());
     });
 
-    connect(m_downloadReply, &QNetworkReply::finished, this, [this, version]() {
-        QNetworkReply *reply = m_downloadReply;
-        m_downloadReply = nullptr;
-        if (reply) {
-            if (m_downloadFile && reply->bytesAvailable() > 0)
-                m_downloadFile->write(reply->readAll());
-            reply->deleteLater();
-        }
+    connect(m_downloadReply, &QNetworkReply::finished, this,
+            [this, version, sha256, launchInstaller]() {
+                QNetworkReply *reply = m_downloadReply;
+                m_downloadReply = nullptr;
+                if (reply) {
+                    if (m_downloadFile && reply->bytesAvailable() > 0)
+                        m_downloadFile->write(reply->readAll());
+                    reply->deleteLater();
+                }
 
-        if (m_downloadFile) {
-            m_downloadFile->close();
-            delete m_downloadFile;
-            m_downloadFile = nullptr;
-        }
+                if (m_downloadFile) {
+                    m_downloadFile->close();
+                    delete m_downloadFile;
+                    m_downloadFile = nullptr;
+                }
 
-        if (!reply || reply->error() != QNetworkReply::NoError) {
-            emit failed(QStringLiteral("下载失败，请稍后到 GitHub 手动下载"));
-            return;
-        }
+                if (!reply || reply->error() != QNetworkReply::NoError) {
+                    emit failed(QStringLiteral("下载失败，请稍后到 GitHub 手动下载"));
+                    return;
+                }
 
-        emit statusChanged(QStringLiteral("下载完成，正在启动安装包…"));
-        if (QProcess::startDetached(m_downloadPath, QStringList()))
-            emit installerLaunched();
-        else
-            emit failed(QStringLiteral("安装包启动失败：%1").arg(m_downloadPath));
-        Q_UNUSED(version)
-    });
+                // GitHub 给了 sha256 就校验，自动安装前必须确认包没被换掉
+                if (!sha256.isEmpty()) {
+                    QFile file(m_downloadPath);
+                    if (!file.open(QIODevice::ReadOnly)) {
+                        emit failed(QStringLiteral("安装包校验失败：读不了下载文件"));
+                        return;
+                    }
+                    QCryptographicHash hash(QCryptographicHash::Sha256);
+                    hash.addData(&file);
+                    file.close();
+                    const QString actual = QString::fromLatin1(hash.result().toHex());
+                    if (actual.compare(sha256, Qt::CaseInsensitive) != 0) {
+                        QFile::remove(m_downloadPath);
+                        emit failed(QStringLiteral("安装包校验失败：SHA256 和 GitHub 不一致"));
+                        return;
+                    }
+                }
+
+                if (!launchInstaller) {
+                    emit statusChanged(QStringLiteral("下载完成，等待自动安装…"));
+                    emit downloadFinished(m_downloadPath, version);
+                    return;
+                }
+
+                emit statusChanged(QStringLiteral("下载完成，正在启动安装包…"));
+                if (QProcess::startDetached(m_downloadPath, QStringList()))
+                    emit installerLaunched();
+                else
+                    emit failed(QStringLiteral("安装包启动失败：%1").arg(m_downloadPath));
+            });
 }

@@ -24,10 +24,16 @@
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
-#include <QPainter>
-#include <QRadialGradient>
-#include <QSettings>
+#include <QCoreApplication>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QPainter>
+#include <QProcess>
+#include <QRadialGradient>
+#include <QRandomGenerator>
+#include <QSettings>
+#include <QStringList>
 #include <QMenu>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -282,6 +288,8 @@ void MainWindow::setupUpdater()
             m_settingsPage->setUpdateStatus(text);
     });
     connect(m_updater, &UpdateManager::updateFound, this, &MainWindow::onUpdateFound);
+    connect(m_updater, &UpdateManager::downloadFinished, this,
+            &MainWindow::onAutoDownloadFinished);
     connect(m_updater, &UpdateManager::upToDate, this, [this](const QString &) {
         if (m_manualUpdateCheck && m_settingsPage)
             m_settingsPage->setUpdateStatus(QStringLiteral("已经是最新版本"));
@@ -290,6 +298,13 @@ void MainWindow::setupUpdater()
     connect(m_updater, &UpdateManager::failed, this, [this](const QString &error) {
         if (m_settingsPage)
             m_settingsPage->setUpdateStatus(error);
+        if (m_autoUpdateInProgress) {
+            m_autoUpdateInProgress = false;
+            Toast::showToast(QStringLiteral("自动更新失败"), error, Toast::Warning, 10000,
+                             QStringLiteral("查看更新"),
+                             [this]() { openUpdateWindow(true); });
+            return;
+        }
         if (m_manualUpdateCheck) {
             DarkDialog::information(this, "检查更新", error);
             m_manualUpdateCheck = false;
@@ -301,25 +316,33 @@ void MainWindow::setupUpdater()
                          Toast::Info, 7000);
     });
 
-    // 已经打开的客户端也要能"收到推送"：每 20 分钟静默看一眼新版本
+    // 已经打开的客户端也要能"收到推送"：15~35 分钟随机看一眼新版本。
+    // 固定 20 分钟会让所有客户端在同一时刻打到 GitHub，随机错开能避免限流。
+    auto randomizedPollMs = []() {
+        return QRandomGenerator::global()->bounded(15, 36) * 60 * 1000;
+    };
+
     m_updatePoll = new QTimer(this);
-    m_updatePoll->setInterval(20 * 60 * 1000);
-    connect(m_updatePoll, &QTimer::timeout, this, [this]() {
-        if (!SettingsManager::instance()->autoCheckUpdates())
-            return;
-        if (m_manualUpdateCheck)
-            return;                                  // 正在手动检查，别插一脚
-        if (m_updateDialog && m_updateDialog->isVisible())
-            return;                                  // 更新窗口开着，它会自己刷新
-        checkForUpdates(false);
+    m_updatePoll->setSingleShot(true);
+    m_updatePoll->setInterval(randomizedPollMs());
+    connect(m_updatePoll, &QTimer::timeout, this, [this, randomizedPollMs]() {
+        const bool enabled = SettingsManager::instance()->updateMode()
+                             != SettingsManager::NeverUpdate;
+        const bool dialogVisible = m_updateDialog && m_updateDialog->isVisible();
+        if (enabled && !m_manualUpdateCheck && !dialogVisible)
+            checkForUpdates(false);
+
+        // 每次检查完重新摇一个间隔，下一次不会和别的客户端撞在一起
+        m_updatePoll->start(randomizedPollMs());
     });
     m_updatePoll->start();
 
     m_notifiedVersion = SettingsManager::instance()->notifiedVersion();
 
-    // 启动后静默检查一次
-    if (SettingsManager::instance()->autoCheckUpdates()) {
-        QTimer::singleShot(2500, this, [this]() { checkForUpdates(false); });
+    // 启动后静默检查一次，延迟也随机 5~30 秒，避免开机潮一起请求
+    if (SettingsManager::instance()->updateMode() != SettingsManager::NeverUpdate) {
+        const int delay = QRandomGenerator::global()->bounded(5000, 30001);
+        QTimer::singleShot(delay, this, [this]() { checkForUpdates(false); });
     }
 }
 
@@ -367,10 +390,10 @@ void MainWindow::openUpdateWindow(bool startCheck)
 }
 
 void MainWindow::onUpdateFound(const QString &version, const QString &notes,
-                               const QString &downloadUrl, const QString &pageUrl)
+                               const QString &downloadUrl, const QString &pageUrl,
+                               const QString &sha256)
 {
     Q_UNUSED(notes)
-    Q_UNUSED(downloadUrl)
     Q_UNUSED(pageUrl)
 
     if (m_settingsPage)
@@ -384,8 +407,18 @@ void MainWindow::onUpdateFound(const QString &version, const QString &notes,
         return;
     }
 
-    // ---- 后台推送：不抢焦点，只在右下角浮层 + 托盘气泡里提示 ----
     SettingsManager *sm = SettingsManager::instance();
+    const int mode = sm->updateMode();
+
+    if (mode == SettingsManager::AutoUpdate) {
+        startAutoUpdate(version, downloadUrl, sha256);
+        return;
+    }
+
+    if (mode == SettingsManager::NeverUpdate)
+        return;                                   // 后台不会检查；保险起见忽略
+
+    // ---- 手动确认：不抢焦点，只在右下角浮层 + 托盘气泡里提示 ----
     if (sm->skippedVersion() == version)
         return;                                   // 这个版本用户已经"跳过"了，别再烦
 
@@ -410,6 +443,136 @@ void MainWindow::onUpdateFound(const QString &version, const QString &notes,
                             QSystemTrayIcon::Information, 7000);
 }
 
+bool MainWindow::canAutoInstall(QString *installDir, bool *portable) const
+{
+    const QString dir = QCoreApplication::applicationDirPath();
+    if (!QFileInfo::exists(dir + QStringLiteral("/KOPAL.exe")))
+        return false;
+
+    // 安装版会更新快捷方式/卸载项；便携版只换文件，不写注册表
+    const QString nativeDir = QDir::cleanPath(dir);
+    auto installedAt = [&nativeDir](const QString &key) {
+        QSettings entry(key, QSettings::NativeFormat);
+        const QString location = QDir::cleanPath(
+            QDir::fromNativeSeparators(entry.value(QStringLiteral("InstallLocation")).toString()));
+        return !location.isEmpty()
+               && location.compare(nativeDir, Qt::CaseInsensitive) == 0;
+    };
+    const bool installed =
+        installedAt(QStringLiteral(
+            "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\KOPAL"))
+        || installedAt(QStringLiteral(
+            "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Cjibackup"));
+
+    // 目录必须可写（Program Files 下没权限就退回手动更新）
+    QFile probe(dir + QStringLiteral("/.kopal_update_write_test"));
+    if (!probe.open(QIODevice::WriteOnly))
+        return false;
+    probe.close();
+    QFile::remove(probe.fileName());
+
+    if (installDir)
+        *installDir = dir;
+    if (portable)
+        *portable = !installed;
+    return true;
+}
+
+void MainWindow::startAutoUpdate(const QString &version, const QString &downloadUrl,
+                                 const QString &sha256)
+{
+    if (m_autoUpdateInProgress)
+        return;
+
+    // 正在备份/校验时绝不能重启；先记下来，完成后再自动更新
+    if (m_backupPage && m_backupPage->isBusy()) {
+        m_pendingAutoUpdate = true;
+        m_pendingUpdateVersion = version;
+        m_pendingUpdateUrl = downloadUrl;
+        m_pendingUpdateSha = sha256;
+        if (m_settingsPage)
+            m_settingsPage->setUpdateStatus(
+                QStringLiteral("备份进行中，完成后自动更新到 v%1").arg(version));
+        return;
+    }
+
+    QString installDir;
+    if (downloadUrl.isEmpty() || !canAutoInstall(&installDir)) {
+        Toast::showToast(QStringLiteral("发现新版本 v%1").arg(version),
+                         QStringLiteral("这个版本需要手动安装，点这里去下载。"),
+                         Toast::Info, 10000, QStringLiteral("查看更新"),
+                         [this]() { openUpdateWindow(true); });
+        return;
+    }
+
+    m_autoUpdateInProgress = true;
+    m_autoUpdateVersion = version;
+    if (m_settingsPage)
+        m_settingsPage->setUpdateStatus(QStringLiteral("正在后台下载 v%1…").arg(version));
+
+    Toast::showToast(QStringLiteral("正在更新到 v%1").arg(version),
+                     QStringLiteral("下载完成后会自动安装并重启，不需要你确认。"),
+                     Toast::Info, 8000);
+
+    m_updater->downloadForAutoInstall(downloadUrl, version, sha256);
+}
+
+void MainWindow::onAutoDownloadFinished(const QString &path, const QString &version)
+{
+    if (!m_autoUpdateInProgress)
+        return;
+
+    m_autoUpdateInProgress = false;
+    installDownloadedUpdate(path, version);
+}
+
+void MainWindow::installDownloadedUpdate(const QString &path, const QString &version)
+{
+    if (m_backupPage && m_backupPage->isBusy()) {
+        m_pendingSetupPath = path;
+        m_pendingSetupVersion = version;
+        if (m_settingsPage)
+            m_settingsPage->setUpdateStatus(
+                QStringLiteral("备份进行中，完成后安装 v%1").arg(version));
+        return;
+    }
+
+    QString installDir;
+    bool portable = false;
+    if (!canAutoInstall(&installDir, &portable)) {
+        Toast::showToast(QStringLiteral("自动更新失败"),
+                         QStringLiteral("安装目录没有写入权限，请手动下载安装包。"),
+                         Toast::Warning, 10000, QStringLiteral("查看更新"),
+                         [this]() { openUpdateWindow(true); });
+        return;
+    }
+
+    QStringList args{
+        QStringLiteral("--silent"),
+        QStringLiteral("--exact"),
+        QStringLiteral("--auto"),
+        QStringLiteral("--dir=") + installDir,
+    };
+    if (portable)
+        args << QStringLiteral("--no-shortcuts");
+
+    if (!QProcess::startDetached(path, args, installDir)) {
+        Toast::showToast(QStringLiteral("自动更新失败"),
+                         QStringLiteral("安装包启动失败，请手动下载。"),
+                         Toast::Warning, 10000, QStringLiteral("查看更新"),
+                         [this]() { openUpdateWindow(true); });
+        return;
+    }
+
+    if (m_settingsPage)
+        m_settingsPage->setUpdateStatus(QStringLiteral("正在安装 v%1，完成后自动重启…").arg(version));
+    Toast::showToast(QStringLiteral("正在安装 v%1").arg(version),
+                     QStringLiteral("KOPAL 会自动重启到新版本。"), Toast::Info, 6000);
+
+    // 安装器会等这个进程退出后再覆盖文件
+    quitApplication();
+}
+
 void MainWindow::onBackupCompleted(int files, qint64 bytes, bool verified)
 {
     SettingsManager *sm = SettingsManager::instance();
@@ -427,6 +590,24 @@ void MainWindow::onBackupCompleted(int files, qint64 bytes, bool verified)
 
     if (isVisible() && isActiveWindow() && !sm->notifyOnComplete()) {
         DarkDialog::information(this, "备份完成", text);
+    }
+
+    // 备份期间推迟的自动更新，现在继续
+    if (!m_pendingSetupPath.isEmpty()) {
+        const QString path = m_pendingSetupPath;
+        const QString version = m_pendingSetupVersion;
+        m_pendingSetupPath.clear();
+        m_pendingSetupVersion.clear();
+        installDownloadedUpdate(path, version);
+    } else if (m_pendingAutoUpdate) {
+        const QString version = m_pendingUpdateVersion;
+        const QString url = m_pendingUpdateUrl;
+        const QString sha = m_pendingUpdateSha;
+        m_pendingAutoUpdate = false;
+        m_pendingUpdateVersion.clear();
+        m_pendingUpdateUrl.clear();
+        m_pendingUpdateSha.clear();
+        startAutoUpdate(version, url, sha);
     }
 }
 

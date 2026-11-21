@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(Cjibackup VERSION 2.2.1 LANGUAGES CXX)
+project(Cjibackup VERSION 2.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -289,6 +289,13 @@ if(CJI_BUILD_TESTS)
     )
     target_link_libraries(core_tests PRIVATE Qt6::Core Qt6::Network)
     target_include_directories(core_tests PRIVATE src)
+
+    # TLS 探针：验证打包后的 Qt 能不能走 HTTPS（更新检查用）
+    qt_add_executable(tls_probe
+        tests/tls_probe.cpp
+    )
+    target_link_libraries(tls_probe PRIVATE Qt6::Core Qt6::Network)
+    target_include_directories(tls_probe PRIVATE src)
 
     # 离屏截图工具：给文档 / 预览用，不参与发布
     qt_add_executable(shot_tool

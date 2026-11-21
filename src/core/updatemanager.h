@@ -27,6 +27,7 @@ struct UpdateRelease
     QString date;                 // 2026-11-01
     QVector<UpdateNote> notes;    // 拆好的一条条更新说明（带分类）
     QString downloadUrl;          // 安装包地址
+    QString sha256;               // GitHub 提供的 sha256（没有就是空）
     QString pageUrl;              // Release 页面
     bool prerelease = false;
 };
@@ -45,7 +46,11 @@ public:
     void checkForUpdates();
     // 更新窗口用：拉全部版本（正式版 + 预发布），交给窗口自己分栏显示
     void fetchAllReleases();
-    void downloadAndInstall(const QString &url, const QString &version);
+    void downloadAndInstall(const QString &url, const QString &version,
+                            const QString &sha256 = QString());
+    // 自动更新：只下载，完成后发 downloadFinished，由上层安排静默安装
+    void downloadForAutoInstall(const QString &url, const QString &version,
+                                const QString &sha256 = QString());
 
     // "测试 v0.3.0" / "v0.3.0" / "0.3" -> "0.3.0"
     static QString normalizeVersion(const QString &raw);
@@ -56,16 +61,20 @@ public:
 signals:
     void statusChanged(const QString &text);
     void updateFound(const QString &version, const QString &notes,
-                     const QString &downloadUrl, const QString &pageUrl);
+                     const QString &downloadUrl, const QString &pageUrl,
+                     const QString &sha256);
     void upToDate(const QString &currentVersion);
     void failed(const QString &error);
     void progress(qint64 received, qint64 total);
     void installerLaunched();
+    void downloadFinished(const QString &path, const QString &version);
 
     void releasesFetched(const QVector<UpdateRelease> &releases);
     void releasesFailed(const QString &error);
 
 private:
+    void startDownload(const QString &url, const QString &version, const QString &sha256,
+                       bool launchInstaller);
     void handleCheckReply(QNetworkReply *reply);
     void handleListReply(QNetworkReply *reply);
     void abortCheck();

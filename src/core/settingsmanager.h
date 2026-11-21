@@ -107,7 +107,14 @@ public:
     void setReminderLastFired(const QString &v);
 
     // 自动更新
-    bool autoCheckUpdates() const;
+    enum UpdateMode {
+        AutoUpdate = 0,     // 发现新版本自动下载、静默安装并重启
+        ManualUpdate = 1,   // 发现新版本只提示，用户点确认才安装
+        NeverUpdate = 2,    // 不自动检查；只有手动点「检查更新」才查
+    };
+    int updateMode() const;
+    void setUpdateMode(int mode);
+    bool autoCheckUpdates() const;        // 兼容旧键：NeverUpdate 时为 false
     void setAutoCheckUpdates(bool v);
     QString updateChannel() const;        // test / release
     void setUpdateChannel(const QString &v);

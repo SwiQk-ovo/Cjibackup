@@ -22,6 +22,12 @@ public:
     explicit InstallerWindow(bool testMode, QWidget *parent = nullptr);
 
     void setInitialDir(const QString &dir);
+    // 自动更新用：--exact 时不再自动补 KOPAL 子目录，原地覆盖
+    void setExactDir(bool exact) { m_exactDir = exact; }
+    // 自动更新用：等旧进程退出、静默安装、装完自动重启
+    void setAutoRestart(bool on) { m_autoRestart = on; }
+    // 便携版自动更新：不写快捷方式和卸载注册表
+    void setNoShortcuts(bool on) { m_noShortcuts = on; }
     // 无界面安装（自动更新 / 命令行用），成功返回 true
     bool runSilent();
 
@@ -42,6 +48,9 @@ private:
                         const std::function<void(int, const QString &)> &progress, QString *error);
 
     bool m_testMode = false;
+    bool m_exactDir = false;
+    bool m_autoRestart = false;
+    bool m_noShortcuts = false;
     bool m_installed = false;
     PayloadReader m_payload;
     QString m_installDir;

@@ -9,6 +9,7 @@
 #include <QCheckBox>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QTextStream>
 #include <QDir>
 #include <QFileDialog>
@@ -26,11 +27,13 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QThread>
 #include <QVBoxLayout>
 
 #ifdef Q_OS_WIN
 #  include <windows.h>
 #  include <dwmapi.h>
+#  include <tlhelp32.h>
 #endif
 
 namespace {
@@ -55,6 +58,44 @@ void installLog(const QString &message)
     if (file.open(QIODevice::Append | QIODevice::Text)) {
         QTextStream out(&file);
         out << QDateTime::currentDateTime().toString("hh:mm:ss") << " " << message << "\n";
+    }
+}
+
+// 自动更新：等主程序退出后再覆盖文件，否则 KOPAL.exe 会被占用
+bool kopalProcessRunning()
+{
+#ifdef Q_OS_WIN
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE)
+        return false;
+
+    PROCESSENTRY32W entry;
+    entry.dwSize = sizeof(entry);
+    bool found = false;
+    if (Process32FirstW(snapshot, &entry)) {
+        do {
+            if (QString::fromWCharArray(entry.szExeFile)
+                    .compare(QStringLiteral("KOPAL.exe"), Qt::CaseInsensitive)
+                == 0) {
+                found = true;
+                break;
+            }
+        } while (Process32NextW(snapshot, &entry));
+    }
+    CloseHandle(snapshot);
+    return found;
+#else
+    return false;
+#endif
+}
+
+void waitForKopalExit(int timeoutMs)
+{
+    QElapsedTimer timer;
+    timer.start();
+    while (kopalProcessRunning() && timer.elapsed() < timeoutMs) {
+        QCoreApplication::processEvents();
+        QThread::msleep(150);
     }
 }
 
@@ -375,7 +416,8 @@ void InstallerWindow::browseInstallDir()
 void InstallerWindow::setInitialDir(const QString &dir)
 {
     if (!dir.trimmed().isEmpty() && m_pathEdit)
-        m_pathEdit->setText(InstallData::normalizeInstallDir(dir));
+        m_pathEdit->setText(m_exactDir ? QDir::fromNativeSeparators(dir)
+                                       : InstallData::normalizeInstallDir(dir));
 }
 
 bool InstallerWindow::performInstall(const QString &dir, bool createShortcuts,
@@ -438,13 +480,31 @@ bool InstallerWindow::runSilent()
     if (!m_payload.isOpen())
         return false;
 
-    const QString dir = m_pathEdit && !m_pathEdit->text().trimmed().isEmpty()
-                            ? InstallData::normalizeInstallDir(m_pathEdit->text())
-                            : InstallData::defaultInstallDir();
+    const QString rawDir = m_pathEdit && !m_pathEdit->text().trimmed().isEmpty()
+                               ? m_pathEdit->text().trimmed()
+                               : QString();
+    const QString dir = rawDir.isEmpty()
+                            ? InstallData::defaultInstallDir()
+                            : (m_exactDir ? QDir::fromNativeSeparators(rawDir)
+                                          : InstallData::normalizeInstallDir(rawDir));
 
     QString error;
-    const bool ok = performInstall(dir, true, nullptr, &error);
+
+    if (m_autoRestart) {
+        installLog(QStringLiteral("auto update: waiting for KOPAL.exe to exit"));
+        waitForKopalExit(20000);
+    }
+
+    const bool ok = performInstall(dir, !m_noShortcuts, nullptr, &error);
     installLog(QString("runSilent ok=%1 err=%2 dir=%3").arg(ok).arg(error).arg(dir));
+
+    if (m_autoRestart) {
+        const QString appPath = dir + QStringLiteral("/KOPAL.exe");
+        if (QFileInfo::exists(appPath)) {
+            QProcess::startDetached(appPath, QStringList(), dir);
+            installLog(QStringLiteral("auto update: restarted %1").arg(appPath));
+        }
+    }
     return ok;
 }
 

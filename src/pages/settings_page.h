@@ -66,7 +66,7 @@ private:
     QDateEdit *m_reminderDate = nullptr;
     QLabel *m_reminderHint = nullptr;
 
-    QCheckBox *m_autoUpdateCheck = nullptr;
+    QComboBox *m_updateMode = nullptr;
     QComboBox *m_updateChannel = nullptr;
     QPushButton *m_checkUpdateBtn = nullptr;
     QLabel *m_updateStatus = nullptr;

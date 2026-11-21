@@ -455,8 +455,9 @@ void UpdateDialog::buildFooter(QVBoxLayout *root)
         QString url = selected.release.pageUrl;
         if (url.isEmpty())
             url = fallback.release.pageUrl;
-        if (!url.isEmpty())
-            QDesktopServices::openUrl(QUrl(url));
+        if (url.isEmpty())
+            url = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
+        QDesktopServices::openUrl(QUrl(url));
     });
     row->addWidget(m_pageBtn);
 
@@ -523,8 +524,8 @@ void UpdateDialog::startCheck()
 void UpdateDialog::showDemoReleases()
 {
     UpdateRelease stable;
-    stable.version = QStringLiteral("2.2.2");
-    stable.title = QStringLiteral("KOPAL v2.2.2");
+    stable.version = QStringLiteral("2.3.1");
+    stable.title = QStringLiteral("KOPAL v2.3.1");
     stable.date = QStringLiteral("2026-11-20");
     stable.pageUrl = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
     stable.notes = {
@@ -534,11 +535,11 @@ void UpdateDialog::showDemoReleases()
     };
 
     UpdateRelease pre;
-    pre.version = QStringLiteral("2.3.0");
-    pre.title = QStringLiteral("KOPAL v2.3.0");
+    pre.version = QStringLiteral("2.4.0");
+    pre.title = QStringLiteral("KOPAL v2.4.0");
     pre.date = QStringLiteral("2026-11-22");
     pre.prerelease = true;
-    pre.downloadUrl = QStringLiteral("https://example.com/KOPAL_Setup_2.3.0.exe");
+    pre.downloadUrl = QStringLiteral("https://example.com/KOPAL_Setup_2.4.0.exe");
     pre.pageUrl = QStringLiteral("https://github.com/SwiQk-ovo/Cjibackup/releases");
     pre.notes = {
         {UpdateNoteKind::Added, QStringLiteral("流程图新增「合并节点」：拖一个节点到另一个节点上就能合并成一层文件夹")},
@@ -573,24 +574,39 @@ void UpdateDialog::applyReleases(const QVector<UpdateRelease> &releases)
     if (m_pageBtn)
         m_pageBtn->setEnabled(hasPage);
 
-    // 只看当前通道：另一个通道的更新只有在"双通道都有更新"时才会显示出来
+    // 正式通道只看正式版；测试通道正式 + 预发布都看。
+    // 双通道都有更新时，状态条才提示"都有更新"。
     const bool testChannel = SettingsManager::instance()->updateChannel()
                              == QStringLiteral("test");
-    const ChannelCard &selected = testChannel ? m_prerelease : m_stable;
     const QString current = Cji::versionNumber();
-    const bool newest = !selected.hasRelease
-                        || UpdateManager::compareVersions(selected.release.version, current) <= 0;
+    auto hasUpdate = [&current](const ChannelCard &card) {
+        return card.hasRelease
+               && UpdateManager::compareVersions(card.release.version, current) > 0;
+    };
+    const bool stableUpdate = hasUpdate(m_stable);
+    const bool preUpdate = hasUpdate(m_prerelease);
+    const bool anyUpdate = testChannel ? (stableUpdate || preUpdate) : stableUpdate;
 
-    const bool bothHaveUpdate = m_stable.card->isVisible() && m_prerelease.card->isVisible();
-    if (newest) {
+    if (!anyUpdate) {
         setStatus(QStringLiteral("当前已是最新版本"), 2);
         emit checked(QStringLiteral("当前已是最新版本"));
-    } else {
-        setStatus(bothHaveUpdate ? QStringLiteral("正式版和预发布版都有更新")
-                                 : QStringLiteral("发现可用更新"),
-                  1);
-        emit checked(QStringLiteral("发现新版本 v%1").arg(selected.release.version));
+        return;
     }
+
+    QString newestVersion = stableUpdate ? m_stable.release.version
+                                         : m_prerelease.release.version;
+    if (stableUpdate && preUpdate) {
+        newestVersion = UpdateManager::compareVersions(m_stable.release.version,
+                                                       m_prerelease.release.version) > 0
+                            ? m_stable.release.version
+                            : m_prerelease.release.version;
+    }
+
+    setStatus(testChannel && stableUpdate && preUpdate
+                  ? QStringLiteral("正式版和预发布版都有更新")
+                  : QStringLiteral("发现可用更新"),
+              1);
+    emit checked(QStringLiteral("发现新版本 v%1").arg(newestVersion));
 }
 
 void UpdateDialog::applyFailure(const QString &error)
@@ -600,12 +616,21 @@ void UpdateDialog::applyFailure(const QString &error)
 
     setStatus(error, 3);
     emit checked(error);
+    // 检查失败也要能手动去 GitHub 下载
+    if (m_pageBtn)
+        m_pageBtn->setEnabled(true);
+
+    const QString hint =
+        error.contains(QStringLiteral("TLS"), Qt::CaseInsensitive)
+            ? QStringLiteral("HTTPS 初始化失败（TLS）：缺少 tls 运行库或系统时间不正确。"
+                             "可以点左下角「在 GitHub 上查看」手动下载最新版。")
+            : QStringLiteral("网络不通或被 GitHub 限流，点左下角「重新检查」再试一次。");
+
     for (ChannelCard *card : {&m_stable, &m_prerelease}) {
         card->state->setText(QStringLiteral("检查失败"));
         card->state->show();
         card->action->hide();
-        fillNotes(*card, {{UpdateNoteKind::Changed,
-                           QStringLiteral("网络不通或被 GitHub 限流，点左下角「重新检查」再试一次。")}});
+        fillNotes(*card, {{UpdateNoteKind::Changed, hint}});
     }
     syncChannelLayout();
 }
@@ -733,20 +758,13 @@ void UpdateDialog::syncChannelLayout()
 {
     const bool testChannel = SettingsManager::instance()->updateChannel()
                              == QStringLiteral("test");
-    ChannelCard &selected = testChannel ? m_prerelease : m_stable;
-    ChannelCard &other = testChannel ? m_stable : m_prerelease;
 
-    const QString current = Cji::versionNumber();
-    auto hasUpdate = [&current](const ChannelCard &card) {
-        return card.hasRelease
-               && UpdateManager::compareVersions(card.release.version, current) > 0;
-    };
+    // 正式通道只看正式版：预发布卡整张隐藏。
+    // 只有测试通道才把预发布卡拉出来，两张卡各占一半。
+    m_stable.card->show();
+    m_prerelease.card->setVisible(testChannel);
 
-    // 只显示对应通道；正式 + 预发布都有更新时两张都显示、各占一半
-    const bool both = hasUpdate(m_stable) && hasUpdate(m_prerelease);
-    selected.card->show();
-    other.card->setVisible(both);
-
+    const bool twoCards = testChannel;
     for (ChannelCard *card : {&m_stable, &m_prerelease}) {
         if (m_root) {
             if (!card->card->isVisible())
@@ -755,7 +773,7 @@ void UpdateDialog::syncChannelLayout()
                 m_root->setStretchFactor(card->card, 1);
         }
         if (card->scroll)
-            card->scroll->setMinimumHeight(both ? 96 : 156);
+            card->scroll->setMinimumHeight(twoCards ? 96 : 156);
     }
 }
 
@@ -798,7 +816,8 @@ void UpdateDialog::installFrom(ChannelCard &card)
         return;
     }
 
-    m_manager->downloadAndInstall(card.release.downloadUrl, card.release.version);
+    m_manager->downloadAndInstall(card.release.downloadUrl, card.release.version,
+                                  card.release.sha256);
 }
 
 void UpdateDialog::setDownloadProgress(qint64 received, qint64 total)

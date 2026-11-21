@@ -20,6 +20,9 @@ int main(int argc, char *argv[])
 
     bool testMode = false;
     bool silent = false;
+    bool exactDir = false;
+    bool autoRestart = false;
+    bool noShortcuts = false;
     QString installDir;
 
     for (const QString &arg : app.arguments()) {
@@ -27,6 +30,12 @@ int main(int argc, char *argv[])
             testMode = true;
         else if (arg == QStringLiteral("--silent") || arg == QStringLiteral("/S"))
             silent = true;
+        else if (arg == QStringLiteral("--exact"))
+            exactDir = true;
+        else if (arg == QStringLiteral("--auto"))
+            autoRestart = true;
+        else if (arg == QStringLiteral("--no-shortcuts"))
+            noShortcuts = true;
         else if (arg.startsWith(QStringLiteral("--dir=")))
             installDir = arg.mid(6);
     }
@@ -35,6 +44,9 @@ int main(int argc, char *argv[])
         testMode = true;
 
     InstallerWindow window(testMode);
+    window.setExactDir(exactDir);
+    window.setAutoRestart(autoRestart);
+    window.setNoShortcuts(noShortcuts);
     if (!installDir.isEmpty())
         window.setInitialDir(installDir);
 

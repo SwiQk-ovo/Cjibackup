@@ -51,7 +51,9 @@ private slots:
     void onReminderTriggered(const QDateTime &due);
     void checkForUpdates(bool manual);
     void onUpdateFound(const QString &version, const QString &notes,
-                       const QString &downloadUrl, const QString &pageUrl);
+                       const QString &downloadUrl, const QString &pageUrl,
+                       const QString &sha256);
+    void onAutoDownloadFinished(const QString &path, const QString &version);
 
 private:
     void setupUI();
@@ -63,6 +65,10 @@ private:
     void updateSliderPosition(int index);
     void startGuide();
     void openUpdateWindow(bool startCheck);
+    void startAutoUpdate(const QString &version, const QString &downloadUrl,
+                         const QString &sha256);
+    void installDownloadedUpdate(const QString &path, const QString &version);
+    bool canAutoInstall(QString *installDir, bool *portable = nullptr) const;
 
     QWidget *m_centralWidget = nullptr;
     QHBoxLayout *m_mainLayout = nullptr;
@@ -96,6 +102,14 @@ private:
     UpdateManager *m_updater = nullptr;
 
     bool m_manualUpdateCheck = false;
+    bool m_autoUpdateInProgress = false;
+    QString m_autoUpdateVersion;
+    bool m_pendingAutoUpdate = false;
+    QString m_pendingUpdateVersion;
+    QString m_pendingUpdateUrl;
+    QString m_pendingUpdateSha;
+    QString m_pendingSetupPath;
+    QString m_pendingSetupVersion;
     bool m_trayHintShown = false;
     bool m_forceQuit = false;
     bool m_hasSavedGeometry = false;   // 有没有恢复过上次的窗口几何

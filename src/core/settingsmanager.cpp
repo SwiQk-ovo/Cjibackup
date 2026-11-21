@@ -427,14 +427,31 @@ void SettingsManager::setReminderLastFired(const QString &v)
 
 /* ---------------- 自动更新 ---------------- */
 
+int SettingsManager::updateMode() const
+{
+    // 新键优先；老用户按原来的「启动时自动检查更新」迁移：
+    // 开着 → 自动更新，关着 → 不检测（保持用户原来的意愿）
+    if (m_settings.contains(QStringLiteral("updateMode")))
+        return qBound(0, m_settings.value(QStringLiteral("updateMode")).toInt(), 2);
+    if (m_settings.contains(QStringLiteral("autoCheckUpdates")))
+        return m_settings.value(QStringLiteral("autoCheckUpdates"), true).toBool() ? AutoUpdate
+                                                                                 : NeverUpdate;
+    return AutoUpdate;
+}
+
+void SettingsManager::setUpdateMode(int mode)
+{
+    store("updateMode", qBound(0, mode, 2));
+}
+
 bool SettingsManager::autoCheckUpdates() const
 {
-    return value("autoCheckUpdates", true).toBool();
+    return updateMode() != NeverUpdate;
 }
 
 void SettingsManager::setAutoCheckUpdates(bool v)
 {
-    store("autoCheckUpdates", v);
+    setUpdateMode(v ? AutoUpdate : NeverUpdate);
 }
 
 QString SettingsManager::updateChannel() const

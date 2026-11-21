@@ -20,6 +20,22 @@ QVector<Release> buildReleases()
 {
     QVector<Release> list;
 
+    // ---------------- 2.3.0 ----------------
+    {
+        Release release;
+        release.version = QStringLiteral("2.3.0");
+        release.date = QStringLiteral("2026-11-21");
+        release.items = {
+            {Kind::Added, QStringLiteral("更新方式分三档：自动更新、手动确认、不检测更新，默认自动更新")},
+            {Kind::Added, QStringLiteral("自动更新：发现新版本后后台下载、静默安装并自动重启，不需要确认")},
+            {Kind::Added, QStringLiteral("更新页跟随通道：正式版通道只显示正式版，测试版通道才显示预发布版本")},
+            {Kind::Added, QStringLiteral("安装包下载后按 GitHub 的 SHA256 校验，校验不过不会自动安装")},
+            {Kind::Improved, QStringLiteral("检查更新改成随机间隔（启动 5~30 秒，之后 15~35 分钟），避免同时请求 GitHub")},
+            {Kind::Improved, QStringLiteral("检查失败时区分 TLS 问题，并可以直接点「在 GitHub 上查看」手动下载")},
+        };
+        list.append(release);
+    }
+
     // ---------------- 2.2.1 ----------------
     {
         Release release;

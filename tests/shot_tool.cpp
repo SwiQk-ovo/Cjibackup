@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     }
 
     // 截图工具不联网，避免自动更新弹窗打断
-    SettingsManager::instance()->setAutoCheckUpdates(false);
+    SettingsManager::instance()->setUpdateMode(SettingsManager::AutoUpdate);
     SettingsManager::instance()->setReminderEnabled(false);
 
     if (promo) {
